@@ -1,7 +1,5 @@
 defmodule AshPolicyAccess do
   @moduledoc """
-  #TODO: Explain authorization
-
   Authorization in Ash is done via declaring `rules` for actions,
   and in the case of stateful actions, via declaring `authoriation_steps` on attributes
   and relationships.
@@ -15,4 +13,26 @@ defmodule AshPolicyAccess do
 
   @type side_load :: {:side_load, Keyword.t()}
   @type prepare_instruction :: side_load
+
+  defmacro __using__(_) do
+    quote do
+      import AshPolicyAccess.Dsl, only: [policies: 1]
+      Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
+      @extensions AshPolicyAccess
+      @authorizers AshPolicyAccess.Authorizer
+      require AshPolicyAccess
+    end
+  end
+
+  def policies(resource) do
+    resource.ash_policies()
+  end
+
+  def before_compile_hook(_env) do
+    quote do
+      def ash_policies() do
+        @ash_policies
+      end
+    end
+  end
 end

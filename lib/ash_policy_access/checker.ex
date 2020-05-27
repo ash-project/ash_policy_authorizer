@@ -14,104 +14,36 @@ defmodule AshPolicyAccess.Checker do
   If you need to write your own checks see #TODO: Link to a guide about writing checks here.
   """
 
-  alias AshPolicyAccess.Clause
+  # alias AshPolicyAccess.Clause
+  alias AshPolicyAccess.SatSolver
 
-  def strict_check(user, request, facts) do
-    new_facts =
-      request.rules
-      |> Enum.reduce(facts, fn {_step, clause}, facts ->
-        case Clause.find(facts, clause) do
-          {:ok, _boolean_result} ->
-            facts
+  def strict_check_facts(%{actor: actor, policies: policies} = authorizer) do
+    policies
+    |> Enum.reduce(authorizer.facts, fn policy, facts ->
+      case do_strict_check_facts(policy, actor, authorizer) do
+        {:error, _error} ->
+          # TODO: Surface this error
+          facts
 
-          :error ->
-            case do_strict_check(clause, user, request) do
-              {:error, _error} ->
-                # TODO: Surface this error
-                facts
+        :unknown ->
+          facts
 
-              :unknown ->
-                facts
+        :unknowable ->
+          Map.put(facts, policy, :unknowable)
 
-              :unknowable ->
-                Map.put(facts, clause, :unknowable)
+        :irrelevant ->
+          Map.put(facts, policy, :irrelevant)
 
-              :irrelevant ->
-                Map.put(facts, clause, :irrelevant)
-
-              boolean ->
-                Map.put(facts, clause, boolean)
-            end
-        end
-      end)
-
-    {Map.put(request, :strict_check_complete?, true), new_facts}
+        boolean ->
+          Map.put(facts, policy, boolean)
+      end
+    end)
   end
 
-  def run_checks(engine, %{data: []}, _clause) do
-    {:ok, engine}
-  end
+  defp do_strict_check_facts(policy, actor, authorizer) do
+    %{check_module: module, check_opts: opts, access_type: access_type} = policy
 
-  def run_checks(engine, request, clause) do
-    case clause.check_module().check(engine.user, request.data, %{}, clause.check_opts) do
-      {:error, error} ->
-        {:error, error}
-
-      {:ok, check_result} ->
-        pkey = Ash.primary_key(request.resource)
-
-        {authorized, unauthorized} =
-          Enum.split_with(request.data, fn data ->
-            data_pkey = Map.take(data, pkey)
-
-            Enum.find(check_result, fn authorized ->
-              Map.take(authorized, pkey) == data_pkey
-            end)
-          end)
-
-        case {authorized, unauthorized} do
-          {_, []} ->
-            {:ok, %{engine | facts: Map.put(engine.facts, clause, true)}}
-
-          {[], _} ->
-            {:ok, %{engine | facts: Map.put(engine.facts, clause, false)}}
-
-          {authorized, unauthorized} ->
-            # TODO: Handle this error
-            {:ok, authorized_values} =
-              Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
-                request.resource,
-                authorized
-              )
-
-            authorized_filter =
-              Ash.Filter.parse(request.resource, [or: authorized_values], engine.api)
-
-            {:ok, unauthorized_values} =
-              Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
-                request.resource,
-                unauthorized
-              )
-
-            unauthorized_filter =
-              Ash.Filter.parse(request.resource, [or: unauthorized_values], engine.api)
-
-            authorized_clause = %{clause | filter: authorized_filter}
-            unauthorized_clause = %{clause | filter: unauthorized_filter}
-
-            new_facts =
-              engine.facts
-              |> Map.delete(clause)
-              |> Map.put(authorized_clause, true)
-              |> Map.put(unauthorized_clause, false)
-
-            {:ok, %{engine | facts: new_facts}}
-        end
-    end
-  end
-
-  defp do_strict_check(%{check_module: module, check_opts: opts}, user, request) do
-    case module.strict_check(user, request, opts) do
+    case module.strict_check(actor, authorizer, opts) do
       {:error, error} ->
         {:error, error}
 
@@ -123,7 +55,7 @@ defmodule AshPolicyAccess.Checker do
 
       {:ok, :unknown} ->
         cond do
-          request.strict_access? ->
+          access_type == :strict ->
             # This means "we needed a fact that we have no way of getting"
             # Because the fact was needed in the `strict_check` step
             :unknowable
@@ -136,4 +68,112 @@ defmodule AshPolicyAccess.Checker do
         end
     end
   end
+
+  def find_real_scenario(scenarios, facts) do
+    Enum.find_value(scenarios, fn scenario ->
+      if scenario_is_reality(scenario, facts) == :reality do
+        scenario
+      else
+        false
+      end
+    end)
+  end
+
+  defp scenario_is_reality(scenario, facts) do
+    scenario
+    |> Map.drop([true, false])
+    |> Enum.reduce_while(:reality, fn {fact, requirement}, status ->
+      case Map.fetch(facts, fact) do
+        {:ok, value} ->
+          cond do
+            value == requirement ->
+              {:cont, status}
+
+            value == :irrelevant ->
+              {:cont, status}
+
+            value == :unknowable ->
+              {:halt, :not_reality}
+
+            true ->
+              {:halt, :not_reality}
+          end
+
+        :error ->
+          {:cont, :maybe}
+      end
+    end)
+  end
+
+  def strict_check_scenarios(authorizer) do
+    case SatSolver.solve(authorizer) do
+      {:ok, scenarios} ->
+        {:ok, scenarios}
+
+      {:error, :unsatisfiable} ->
+        {:error, :unsatisfiable}
+    end
+  end
+
+  # def run_checks(engine, %{data: []}, _clause) do
+  #   {:ok, engine}
+  # end
+
+  # def run_checks(engine, request, clause) do
+  #   case clause.check_module().check(engine.user, request.data, %{}, clause.check_opts) do
+  #     {:error, error} ->
+  #       {:error, error}
+
+  #     {:ok, check_result} ->
+  #       pkey = Ash.primary_key(request.resource)
+
+  #       {authorized, unauthorized} =
+  #         Enum.split_with(request.data, fn data ->
+  #           data_pkey = Map.take(data, pkey)
+
+  #           Enum.find(check_result, fn authorized ->
+  #             Map.take(authorized, pkey) == data_pkey
+  #           end)
+  #         end)
+
+  #       case {authorized, unauthorized} do
+  #         {_, []} ->
+  #           {:ok, %{engine | facts: Map.put(engine.facts, clause, true)}}
+
+  #         {[], _} ->
+  #           {:ok, %{engine | facts: Map.put(engine.facts, clause, false)}}
+
+  #         {authorized, unauthorized} ->
+  #           # TODO: Handle this error
+  #           {:ok, authorized_values} =
+  #             Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+  #               request.resource,
+  #               authorized
+  #             )
+
+  #           authorized_filter =
+  #             Ash.Filter.parse(request.resource, [or: authorized_values], engine.api)
+
+  #           {:ok, unauthorized_values} =
+  #             Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+  #               request.resource,
+  #               unauthorized
+  #             )
+
+  #           unauthorized_filter =
+  #             Ash.Filter.parse(request.resource, [or: unauthorized_values], engine.api)
+
+  #           authorized_clause = %{clause | filter: authorized_filter}
+  #           unauthorized_clause = %{clause | filter: unauthorized_filter}
+
+  #           new_facts =
+  #             engine.facts
+  #             |> Map.delete(clause)
+  #             |> Map.put(authorized_clause, true)
+  #             |> Map.put(unauthorized_clause, false)
+
+  #           {:ok, %{engine | facts: new_facts}}
+  #       end
+  #   end
+  # end
 end

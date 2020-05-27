@@ -40,12 +40,33 @@ defmodule AshPolicyAccess.Filter do
         false
 
       cleared_pkey_filter ->
-        parsed_cleared_pkey_filter = parse(filter.resource, cleared_pkey_filter, filter.api)
+        parsed_cleared_pkey_filter =
+          Ash.Filter.parse(filter.resource, cleared_pkey_filter, filter.api)
 
         cleared_candidate_filter = clear_equality_values(filter)
 
         strict_subset_of?(parsed_cleared_pkey_filter, cleared_candidate_filter)
     end
+  end
+
+  def get_pkeys(%{query: nil, resource: resource}, api, %_{} = item) do
+    pkey_filter =
+      item
+      |> Map.take(Ash.primary_key(resource))
+      |> Map.to_list()
+
+    api
+    |> Ash.Query.new(resource)
+    |> Ash.Query.filter(pkey_filter)
+  end
+
+  def get_pkeys(%{query: query}, _, %resource{} = item) do
+    pkey_filter =
+      item
+      |> Map.take(Ash.primary_key(resource))
+      |> Map.to_list()
+
+    Ash.Query.filter(query, pkey_filter)
   end
 
   # The story here:

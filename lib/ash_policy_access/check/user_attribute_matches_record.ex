@@ -17,7 +17,7 @@ defmodule AshPolicyAccess.Check.UserAttributeMatchesRecord do
 
     case Ash.Filter.parse(request.resource, [{record_field, eq: value}], request.query.api) do
       %{errors: []} = parsed ->
-        if Ash.Filter.strict_subset_of?(parsed, request.query.filter) do
+        if AshPolicyAccess.Filter.strict_subset_of?(parsed, request.query.filter) do
           {:ok, true}
         else
           case Ash.Filter.parse(
@@ -26,7 +26,7 @@ defmodule AshPolicyAccess.Check.UserAttributeMatchesRecord do
                  request.query.api
                ) do
             %{errors: []} = parsed ->
-              if Ash.Filter.strict_subset_of?(parsed, request.query.filter) do
+              if AshPolicyAccess.Filter.strict_subset_of?(parsed, request.query.filter) do
                 {:ok, false}
               else
                 {:ok, :unknown}

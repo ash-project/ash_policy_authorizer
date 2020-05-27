@@ -1,20 +1,8 @@
 defmodule AshPolicyAccess.SatSolver do
-  alias AshPolicyAccess.Clause
-
   @dialyzer {:no_return, :"picosat_solve/1"}
 
-  def solve(requests, facts) do
-    expression =
-      Enum.reduce(requests, nil, fn request, expr ->
-        requirements_expression =
-          build_requirements_expression([request.rules], facts, request.query.filter)
-
-        if expr do
-          {:and, expr, requirements_expression}
-        else
-          requirements_expression
-        end
-      end)
+  def solve(authorizer) do
+    expression = build_requirements_expression(authorizer.policies, authorizer.facts)
 
     expression
     |> add_negations_and_solve()
@@ -236,33 +224,15 @@ defmodule AshPolicyAccess.SatSolver do
     end)
   end
 
-  defp build_requirements_expression(sets_of_rules, facts, filter) do
-    rules_expression =
-      Enum.reduce(sets_of_rules, nil, fn rules, acc ->
-        case acc do
-          nil ->
-            compile_rules_expression(rules, facts, filter)
-
-          expr ->
-            {:and, expr, compile_rules_expression(rules, facts, filter)}
-        end
-      end)
-
-    facts =
-      Enum.reduce(facts, %{}, fn {key, value}, acc ->
-        if value == :unknowable do
-          acc
-        else
-          Map.put(acc, key, value)
-        end
-      end)
+  defp build_requirements_expression(policies, facts) do
+    policy_expression = compile_policy_expression(policies, facts)
 
     facts_expression = facts_to_statement(Map.drop(facts, [true, false]))
 
     if facts_expression do
-      {:and, facts_expression, rules_expression}
+      {:and, facts_expression, policy_expression}
     else
-      rules_expression
+      policy_expression
     end
   end
 
@@ -279,14 +249,12 @@ defmodule AshPolicyAccess.SatSolver do
 
   defp solutions_to_predicate_values({:error, error}, _), do: {:error, error}
 
-  defp compile_rules_expression([], _facts, _filter) do
-    true
+  defp compile_policy_expression([], _facts) do
+    false
   end
 
-  defp compile_rules_expression([{:authorize_if, clause}], facts, filter) do
-    clause = %{clause | filter: filter}
-
-    case Clause.find(facts, clause) do
+  defp compile_policy_expression([%{type: :authorize_if} = clause], facts) do
+    case Map.fetch(facts, clause) do
       {:ok, true} -> true
       {:ok, false} -> false
       {:ok, :unknowable} -> false
@@ -295,31 +263,27 @@ defmodule AshPolicyAccess.SatSolver do
     end
   end
 
-  defp compile_rules_expression([{:authorize_if, clause} | rest], facts, filter) do
-    clause = %{clause | filter: filter}
-
-    case Clause.find(facts, clause) do
+  defp compile_policy_expression([%{type: :authorize_if} = clause | rest], facts) do
+    case Map.fetch(facts, clause) do
       {:ok, true} ->
         true
 
       {:ok, false} ->
-        compile_rules_expression(rest, facts, filter)
+        compile_policy_expression(rest, facts)
 
       {:ok, :irrelevant} ->
         true
 
       {:ok, :unknowable} ->
-        compile_rules_expression(rest, facts, filter)
+        compile_policy_expression(rest, facts)
 
       :error ->
-        {:or, clause, compile_rules_expression(rest, facts, filter)}
+        {:or, clause, compile_policy_expression(rest, facts)}
     end
   end
 
-  defp compile_rules_expression([{:authorize_unless, clause}], facts, filter) do
-    clause = %{clause | filter: filter}
-
-    case Clause.find(facts, clause) do
+  defp compile_policy_expression([%{type: :authorize_unless} = clause], facts) do
+    case Map.fetch(facts, clause) do
       {:ok, true} ->
         false
 
@@ -337,12 +301,10 @@ defmodule AshPolicyAccess.SatSolver do
     end
   end
 
-  defp compile_rules_expression([{:authorize_unless, clause} | rest], facts, filter) do
-    clause = %{clause | filter: filter}
-
-    case Clause.find(facts, clause) do
+  defp compile_policy_expression([%{type: :authorize_unless} = clause | rest], facts) do
+    case Map.fetch(facts, clause) do
       {:ok, true} ->
-        compile_rules_expression(rest, facts, filter)
+        compile_policy_expression(rest, facts)
 
       {:ok, false} ->
         true
@@ -351,48 +313,44 @@ defmodule AshPolicyAccess.SatSolver do
         true
 
       {:ok, :unknowable} ->
-        compile_rules_expression(rest, facts, filter)
+        compile_policy_expression(rest, facts)
 
       :error ->
-        {:or, {:not, clause}, compile_rules_expression(rest, facts, filter)}
+        {:or, {:not, clause}, compile_policy_expression(rest, facts)}
     end
   end
 
-  defp compile_rules_expression([{:forbid_if, _clause}], _facts, _) do
+  defp compile_policy_expression([%{type: :forbid_if}], _facts) do
     false
   end
 
-  defp compile_rules_expression([{:forbid_if, clause} | rest], facts, filter) do
-    clause = %{clause | filter: filter}
-
-    case Clause.find(facts, clause) do
+  defp compile_policy_expression([%{type: :forbid_if} = clause | rest], facts) do
+    case Map.fetch(facts, clause) do
       {:ok, true} ->
         false
 
       {:ok, :irrelevant} ->
-        compile_rules_expression(rest, facts, filter)
+        compile_policy_expression(rest, facts)
 
       {:ok, :unknowable} ->
         false
 
       {:ok, false} ->
-        compile_rules_expression(rest, facts, filter)
+        compile_policy_expression(rest, facts)
 
       :error ->
-        {:and, {:not, clause}, compile_rules_expression(rest, facts, filter)}
+        {:and, {:not, clause}, compile_policy_expression(rest, facts)}
     end
   end
 
-  defp compile_rules_expression([{:forbid_unless, _clause}], _facts, _id) do
+  defp compile_policy_expression([%{type: :forbid_unless}], _facts) do
     false
   end
 
-  defp compile_rules_expression([{:forbid_unless, clause} | rest], facts, filter) do
-    clause = %{clause | filter: filter}
-
-    case Clause.find(facts, clause) do
+  defp compile_policy_expression([%{type: :forbid_unless} = clause | rest], facts) do
+    case Map.fetch(facts, clause) do
       {:ok, true} ->
-        compile_rules_expression(rest, facts, filter)
+        compile_policy_expression(rest, facts)
 
       {:ok, false} ->
         false
@@ -404,7 +362,7 @@ defmodule AshPolicyAccess.SatSolver do
         false
 
       :error ->
-        {:and, clause, compile_rules_expression(rest, facts, filter)}
+        {:and, clause, compile_policy_expression(rest, facts)}
     end
   end
 
