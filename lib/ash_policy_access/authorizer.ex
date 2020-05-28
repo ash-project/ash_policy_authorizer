@@ -38,10 +38,7 @@ defmodule AshPolicyAccess.Authorizer do
   end
 
   @impl true
-  def check(authorizer, context) do
-    IO.inspect(authorizer)
-    IO.inspect(context)
-
+  def check(_authorizer, _context) do
     :authorized
   end
 

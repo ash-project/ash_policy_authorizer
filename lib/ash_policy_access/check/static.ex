@@ -1,5 +1,5 @@
 defmodule AshPolicyAccess.Check.Static do
-  use AshPolicyAccess.Check, pure?: true
+  use AshPolicyAccess.Check
 
   @impl true
   def describe(options) do
