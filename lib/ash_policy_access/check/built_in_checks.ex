@@ -9,6 +9,10 @@ defmodule AshPolicyAccess.Check.BuiltInChecks do
     {AshPolicyAccess.Check.Static, [result: false]}
   end
 
+  def action_type(action_type) do
+    {AshPolicyAccess.Check.ActionType, [type: action_type]}
+  end
+
   # def attribute_equals(field, value) do
   #   {AshPolicyAccess.Check.AttributeEquals, field: field, value: value}
   # end
@@ -34,10 +38,10 @@ defmodule AshPolicyAccess.Check.BuiltInChecks do
   #   {AshPolicyAccess.Check.UserAttribute, field: field, value: value}
   # end
 
-  # def user_attribute_matches_record(user_field, record_field) do
-  #   {AshPolicyAccess.Check.UserAttributeMatchesRecord,
-  #    user_field: user_field, record_field: record_field}
-  # end
+  def actor_attribute_matches_record(actor_field, record_field) do
+    {AshPolicyAccess.Check.ActorAttributeMatchesRecord,
+     actor_field: actor_field, record_field: record_field}
+  end
 
   # def relating_to_user(relationship_name, opts) do
   #   {AshPolicyAccess.Check.RelatingToUser,

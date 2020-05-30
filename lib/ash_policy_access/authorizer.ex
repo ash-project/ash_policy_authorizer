@@ -1,15 +1,19 @@
 defmodule AshPolicyAccess.Authorizer do
   defstruct [
     :actor,
-    :action,
     :resource,
     :query,
     :changeset,
+    :action,
+    :api,
     :verbose?,
     :scenarios,
+    :real_scenarios,
     policies: [],
     facts: %{true => true, false => false}
   ]
+
+  @type t :: %__MODULE__{}
 
   alias AshPolicyAccess.Checker
 
@@ -29,35 +33,88 @@ defmodule AshPolicyAccess.Authorizer do
   def strict_check_context(_authorizer) do
     # TODO: Figure out what fields we actually need,
     # probably something on the check module
-    [:query, :changeset]
+    [:query, :changeset, :api, :resource]
   end
 
   @impl true
   def check_context(_authorizer) do
-    [:query, :changeset, :data]
+    [:query, :changeset, :data, :api, :resource]
   end
 
   @impl true
-  def check(_authorizer, _context) do
+  def check(authorizer, data, context) do
+    IO.inspect(authorizer, label: "check authorizer")
+    IO.inspect(context, label: "check context")
+    IO.inspect(data, label: "data")
+    # Big TODO
     :authorized
   end
 
   @impl true
   def strict_check(authorizer, context) do
-    %{authorizer | query: context.query, changeset: context.changeset}
+    %{
+      authorizer
+      | query: context.query,
+        changeset: context.changeset,
+        api: context.api
+    }
     |> get_policies()
     |> do_strict_check_facts()
     |> strict_check_result()
   end
 
+  defp strict_filter(authorizer) do
+    {filterable, require_check} =
+      authorizer.scenarios
+      |> Enum.split_with(fn scenario ->
+        Enum.all?(scenario, fn {{check_module, opts}, _value} ->
+          AshPolicyAccess.Policy.fetch_fact(authorizer.facts, {check_module, opts}) != :error ||
+            (Keyword.has_key?(opts, :__auto_filter__) and
+               AshPolicyAccess.Check.defines_auto_filter?(check_module))
+        end)
+      end)
+
+    filter =
+      filterable
+      |> Enum.reduce([], fn scenario, or_filters ->
+        and_filter =
+          Enum.reduce(scenario, [], fn {{check_module, check_opts}, value}, and_filters ->
+            if check_module.type() == :filter do
+              required_status = check_opts[:__auto_filter__] && value
+
+              if required_status do
+                check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+              else
+                [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
+              end
+            else
+              and_filters
+            end
+          end)
+
+        [and_filter | or_filters]
+      end)
+
+    case {filter, require_check} do
+      {[], []} ->
+        raise "unreachable"
+
+      {_filters, []} ->
+        {:filter, [or: filter]}
+
+      {_filters, _require_check} ->
+        {:continue, authorizer}
+    end
+  end
+
   defp strict_check_result(authorizer) do
     case Checker.strict_check_scenarios(authorizer) do
       {:ok, scenarios} ->
-        case Checker.find_real_scenario(scenarios, authorizer.facts) do
-          nil ->
-            {:continue, %{authorizer | scenarios: scenarios}}
+        case Checker.find_real_scenarios(scenarios, authorizer.facts) do
+          [] ->
+            strict_filter(%{authorizer | scenarios: scenarios})
 
-          _ ->
+          _real_scenarios ->
             :authorized
         end
 
@@ -78,27 +135,6 @@ defmodule AshPolicyAccess.Authorizer do
   end
 
   defp get_policies(authorizer) do
-    policies =
-      authorizer.resource
-      |> AshPolicyAccess.policies()
-      |> Enum.filter(&policies_apply?(&1, authorizer))
-
-    %{authorizer | policies: policies}
+    %{authorizer | policies: AshPolicyAccess.policies(authorizer.resource)}
   end
-
-  defp policies_apply?(%{wheres: []}, _), do: true
-
-  defp policies_apply?(policy, context) do
-    Enum.all?(policy.wheres, &where_clause_match?(&1, context))
-  end
-
-  defp where_clause_match?(where_clause, context) do
-    Enum.all?(where_clause, fn {key, value} ->
-      condition_met?(key, value, context)
-    end)
-  end
-
-  defp condition_met?(:action, action_name, %{action: %{name: action_name}}), do: true
-  defp condition_met?(:action_type, action_type, %{action: %{type: action_type}}), do: true
-  defp condition_met?(_, _, _), do: false
 end

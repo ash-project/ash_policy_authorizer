@@ -140,8 +140,6 @@ defmodule AshPolicyAccess.Report do
 
   # defp status_to_mark(true), do: "✓"
   # defp status_to_mark(false), do: "✗"
-  # defp status_to_mark(:unknowable), do: "?"
-  # defp status_to_mark(:irrelevant), do: "⊘"
   # defp status_to_mark(nil), do: "-"
 
   # defp indent(string) do

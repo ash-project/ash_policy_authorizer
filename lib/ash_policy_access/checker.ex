@@ -14,99 +14,76 @@ defmodule AshPolicyAccess.Checker do
   If you need to write your own checks see #TODO: Link to a guide about writing checks here.
   """
 
-  # alias AshPolicyAccess.Clause
-  alias AshPolicyAccess.SatSolver
+  alias AshPolicyAccess.Policy
+  alias AshPolicyAccess.Policy.Check
 
-  def strict_check_facts(%{actor: actor, policies: policies} = authorizer) do
-    policies
-    |> Enum.reduce(authorizer.facts, fn policy, facts ->
-      case do_strict_check_facts(policy, actor, authorizer) do
-        {:error, _error} ->
-          # TODO: Surface this error
-          facts
-
-        :unknown ->
-          facts
-
-        :unknowable ->
-          Map.put(facts, policy, :unknowable)
-
-        :irrelevant ->
-          Map.put(facts, policy, :irrelevant)
-
-        boolean ->
-          Map.put(facts, policy, boolean)
-      end
-    end)
+  def strict_check_facts(%{policies: policies} = authorizer) do
+    Enum.reduce(policies, authorizer.facts, &do_strict_check_facts(&1, authorizer, &2))
   end
 
-  defp do_strict_check_facts(policy, actor, authorizer) do
-    %{check_module: module, check_opts: opts, access_type: access_type} = policy
+  defp do_strict_check_facts(%Policy{} = policy, authorizer, facts) do
+    facts =
+      case policy.condition do
+        nil ->
+          facts
 
-    case module.strict_check(actor, authorizer, opts) do
-      {:error, error} ->
-        {:error, error}
+        {check_module, opts} ->
+          do_strict_check_facts(
+            %Check{check_module: check_module, check_opts: opts},
+            authorizer,
+            facts
+          )
+      end
 
+    Enum.reduce(policy.policies, facts, &do_strict_check_facts(&1, authorizer, &2))
+  end
+
+  defp do_strict_check_facts(%AshPolicyAccess.Policy.Check{} = check, authorizer, facts) do
+    check_module = check.check_module
+    opts = check.check_opts
+
+    case check_module.strict_check(authorizer.actor, authorizer, opts) do
       {:ok, boolean} when is_boolean(boolean) ->
-        boolean
+        Map.put(facts, {check_module, opts}, boolean)
 
-      {:ok, :irrelevant} ->
-        :irrelevant
-
-      {:ok, :unknown} ->
-        cond do
-          access_type == :strict ->
-            # This means "we needed a fact that we have no way of getting"
-            # Because the fact was needed in the `strict_check` step
-            :unknowable
-
-          AshPolicyAccess.Check.defines_check?(module) ->
-            :unknown
-
-          true ->
-            :unknowable
-        end
+      _other ->
+        facts
     end
   end
 
-  def find_real_scenario(scenarios, facts) do
-    Enum.find_value(scenarios, fn scenario ->
-      if scenario_is_reality(scenario, facts) == :reality do
-        scenario
-      else
-        false
-      end
+  def find_real_scenarios(scenarios, facts) do
+    Enum.filter(scenarios, fn scenario ->
+      scenario_is_reality(scenario, facts) == :reality
     end)
   end
 
   defp scenario_is_reality(scenario, facts) do
     scenario
     |> Map.drop([true, false])
-    |> Enum.reduce_while(:reality, fn {fact, requirement}, status ->
-      case Map.fetch(facts, fact) do
-        {:ok, value} ->
-          cond do
-            value == requirement ->
-              {:cont, status}
+    |> Enum.reduce_while(:reality, fn {{check_module, opts} = fact, requirement}, status ->
+      if Keyword.has_key?(opts, :__auto_filter__) and
+           AshPolicyAccess.Check.defines_check?(check_module) do
+        {:cont, status}
+      else
+        case Map.fetch(facts, fact) do
+          {:ok, value} ->
+            cond do
+              value == requirement ->
+                {:cont, status}
 
-            value == :irrelevant ->
-              {:cont, status}
+              true ->
+                {:halt, :not_reality}
+            end
 
-            value == :unknowable ->
-              {:halt, :not_reality}
-
-            true ->
-              {:halt, :not_reality}
-          end
-
-        :error ->
-          {:cont, :maybe}
+          :error ->
+            {:cont, :maybe}
+        end
       end
     end)
   end
 
   def strict_check_scenarios(authorizer) do
-    case SatSolver.solve(authorizer) do
+    case AshPolicyAccess.Policy.solve(authorizer) do
       {:ok, scenarios} ->
         {:ok, scenarios}
 

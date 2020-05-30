@@ -1,7 +1,7 @@
 defmodule AshPolicyAccess.Dsl do
   defmacro policies(do: body) do
     quote do
-      Module.register_attribute(__MODULE__, :wheres, accumulate: true)
+      Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
       @access_type :strict
 
       import AshPolicyAccess.Check.BuiltInChecks
@@ -17,13 +17,12 @@ defmodule AshPolicyAccess.Dsl do
         ]
 
       unquote(body)
-      Module.delete_attribute(__MODULE__, :wheres)
       import AshPolicyAccess.Dsl, only: [policies: 1]
       import AshPolicyAccess.Check.BuiltInChecks, only: []
     end
   end
 
-  defmacro access_type(type) when type in [:strict] do
+  defmacro access_type(type) when type in [:strict, :filter] do
     quote do
       @access_type unquote(type)
     end
@@ -35,73 +34,84 @@ defmodule AshPolicyAccess.Dsl do
     end
   end
 
-  defmacro authorize_if(check, opts \\ []) do
+  defmacro authorize_if(check) do
     quote do
       {check_module, check_opts} = unquote(check)
 
-      @ash_policies AshPolicyAccess.Policy.new(
-                      @wheres,
+      @ash_policies AshPolicyAccess.Policy.Check.new(
                       :authorize_if,
-                      unquote(opts[:access_type]) || @access_type,
                       check_module,
                       check_opts
                     )
     end
   end
 
-  defmacro authorize_unless(check, opts \\ []) do
+  defmacro authorize_unless(check) do
     quote do
       {check_module, check_opts} = unquote(check)
 
-      @ash_policies AshPolicyAccess.Policy.new(
-                      @wheres,
+      @ash_policies AshPolicyAccess.Policy.Check.new(
                       :authorize_unless,
-                      unquote(opts[:access_type]) || @access_type,
                       check_module,
                       check_opts
                     )
     end
   end
 
-  defmacro forbid_if(check, opts \\ []) do
+  defmacro forbid_if(check) do
     quote do
       {check_module, check_opts} = unquote(check)
 
-      @ash_policies AshPolicyAccess.Policy.new(
-                      @wheres,
+      @ash_policies AshPolicyAccess.Policy.Check.new(
                       :forbid_if,
-                      unquote(opts[:access_type]) || @access_type,
                       check_module,
                       check_opts
                     )
     end
   end
 
-  defmacro forbid_unless(check, opts \\ []) do
+  defmacro forbid_unless(check) do
     quote do
       {check_module, check_opts} = unquote(check)
 
-      @ash_policies AshPolicyAccess.Policy.new(
-                      @wheres,
+      @ash_policies AshPolicyAccess.Policy.Check.new(
                       :forbid_unless,
-                      unquote(opts[:access_type]) || @access_type,
                       check_module,
                       check_opts
                     )
     end
   end
 
-  defmacro policy(where, do: body) do
+  defmacro policy(condition, access_type \\ nil, do: body) do
     quote do
-      existing_wheres = @wheres
+      case unquote(condition) do
+        nil ->
+          :ok
+
+        {module, opts} ->
+          if module.type != :simple do
+            raise "Only simple checks can be used as policy conditions"
+          end
+      end
+
       existing_access_type = @access_type
-      @wheres unquote(where)
+      existing_policies = @ash_policies
+      @access_type unquote(access_type) || @access_type || :strict
+      Module.delete_attribute(__MODULE__, :ash_policies)
+      Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
       unquote(body)
 
-      Module.delete_attribute(__MODULE__, :wheres)
-      Module.register_attribute(__MODULE__, :wheres, accumulate: true)
+      policy = AshPolicyAccess.Policy.new(unquote(condition), @ash_policies, @access_type)
+
+      Module.delete_attribute(__MODULE__, :ash_policies)
+      Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
+      Module.put_attribute(__MODULE__, :ash_policies, policy)
+
+      existing_policies
+      |> Enum.reverse()
+      |> Enum.each(&Module.put_attribute(__MODULE__, :ash_policies, &1))
+
       Module.put_attribute(__MODULE__, :access_type, existing_access_type)
-      Enum.each(existing_wheres, &Module.put_attribute(__MODULE__, :wheres, &1))
     end
   end
 end

@@ -1,6 +1,5 @@
 defmodule AshPolicyAccess.FilterCheck do
   @type options :: Keyword.t()
-  @callback describe(options()) :: String.t()
   @callback filter(options()) :: Keyword.t()
   @optional_callbacks [filter: 1]
 
@@ -19,24 +18,22 @@ defmodule AshPolicyAccess.FilterCheck do
         [:query]
       end
 
-      def check()
-
       def strict_check(nil, _, _), do: false
 
-      def strict_check(actor, %{query: %{filter: candidate}, resource: resource}, opts) do
+      def strict_check(actor, %{query: %{filter: candidate}, resource: resource, api: api}, opts) do
         filter = AshPolicyAccess.FilterCheck.build_filter(filter(opts), actor)
 
         # TODO: Move this filter building to compile-time, with some kind of provision
         # for sentinal values in the filter parsing (so {:_actor, :field} doesn't break)
         # type checking
-        case Ash.Filter.parse(resource, filter) do
-          %{errors: []} = filter ->
-            if AshPolicyAccess.Filter.strict_subset_of?(filter, candidate) do
+        case Ash.Filter.parse(resource, filter, api) do
+          %{errors: []} = parsed_filter ->
+            if Ash.Filter.strict_subset_of?(parsed_filter, candidate) do
               {:ok, true}
             else
-              case Ash.Filter.parse(resource, not: filter) do
+              case Ash.Filter.parse(resource, [not: filter], api) do
                 %{errors: []} = negated_filter ->
-                  if AshPolicyAccess.Filter.strict_subset_of?(negated_filter, candidate) do
+                  if Ash.Filter.strict_subset_of?(negated_filter, candidate) do
                     {:ok, false}
                   else
                     {:ok, :unknown}
@@ -51,7 +48,15 @@ defmodule AshPolicyAccess.FilterCheck do
             {:error, errors}
         end
       end
+
+      def auto_filter(actor, _context, opts) do
+        AshPolicyAccess.FilterCheck.build_filter(filter(opts), actor)
+      end
     end
+  end
+
+  def is_filter_check?(module) do
+    :erlang.function_exported(module, :filter, 1)
   end
 
   def build_filter(filter, actor) do
@@ -65,15 +70,38 @@ defmodule AshPolicyAccess.FilterCheck do
   end
 
   defp walk_filter(filter, mapper) when is_list(filter) do
-    Enum.map(filter, &walk_filter(&1, mapper))
+    case mapper.(filter) do
+      ^filter ->
+        Enum.map(filter, &walk_filter(&1, mapper))
+
+      other ->
+        walk_filter(other, mapper)
+    end
   end
 
   defp walk_filter(filter, mapper) when is_map(filter) do
+    case mapper.(filter) do
+      ^filter ->
+        Enum.into(filter, %{}, &walk_filter(&1, mapper))
+
+      other ->
+        walk_filter(other, mapper)
+    end
+
     Enum.into(filter, %{}, &walk_filter(&1, mapper))
   end
 
-  defp walk_filter({key, value}, mapper) do
-    {walk_filter(key, mapper), walk_filter(value, mapper)}
+  defp walk_filter(tuple, mapper) when is_tuple(tuple) do
+    case mapper.(tuple) do
+      ^tuple ->
+        tuple
+        |> Tuple.to_list()
+        |> Enum.map(&walk_filter(&1, mapper))
+        |> List.to_tuple()
+
+      other ->
+        walk_filter(other, mapper)
+    end
   end
 
   defp walk_filter(value, mapper), do: mapper.(value)

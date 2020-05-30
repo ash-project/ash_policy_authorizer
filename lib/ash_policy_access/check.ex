@@ -5,32 +5,30 @@ defmodule AshPolicyAccess.Check do
   """
 
   @type options :: Keyword.t()
+  @type authorizer :: AshPolicyAccess.Authorizer.t()
 
-  @callback strict_check(Ash.user(), AshPolicyAccess.request(), options) :: boolean | :unknown
-  @callback prepare(options) ::
-              list(AshPolicyAccess.prepare_instruction()) | {:error, Ash.error()}
-  @callback check(Ash.user(), list(Ash.record()), map, options) ::
+  @callback strict_check(Ash.actor(), authorizer(), options) :: boolean | :unknown
+  @callback auto_filter(Ash.actor(), authorizer(), options()) :: Keyword.t()
+  @callback check(Ash.actor(), list(Ash.record()), map, options) ::
               {:ok, list(Ash.record()) | boolean} | {:error, Ash.error()}
   @callback describe(options()) :: String.t()
-  @callback action_types() :: list(Ash.action_type())
+  @callback type() :: :atom
 
-  @optional_callbacks check: 4, prepare: 1
+  @optional_callbacks check: 4, auto_filter: 3
 
   def defines_check?(module) do
     :erlang.function_exported(module, :check, 4)
   end
 
-  defmacro __using__(opts) do
+  def defines_auto_filter?(module) do
+    :erlang.function_exported(module, :auto_filter, 3)
+  end
+
+  defmacro __using__(_opts) do
     quote do
       @behaviour AshPolicyAccess.Check
 
-      @impl true
-      def prepare(_), do: []
-
-      @impl true
-      def action_types(), do: unquote(opts[:action_types])
-
-      defoverridable prepare: 1, action_types: 0
+      def type(), do: :manual
     end
   end
 
