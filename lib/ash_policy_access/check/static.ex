@@ -1,5 +1,5 @@
 defmodule AshPolicyAccess.Check.Static do
-  use AshPolicyAccess.Check
+  use AshPolicyAccess.SimpleCheck
 
   @impl true
   def describe(options) do
@@ -7,7 +7,7 @@ defmodule AshPolicyAccess.Check.Static do
   end
 
   @impl true
-  def strict_check(_user, _request, options) do
+  def match?(_user, _request, options) do
     {:ok, options[:result]}
   end
 end
