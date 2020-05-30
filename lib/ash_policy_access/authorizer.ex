@@ -135,6 +135,33 @@ defmodule AshPolicyAccess.Authorizer do
   end
 
   defp get_policies(authorizer) do
-    %{authorizer | policies: AshPolicyAccess.policies(authorizer.resource)}
+    policies =
+      authorizer.resource
+      |> AshPolicyAccess.policies()
+      |> validate_policies()
+
+    %{authorizer | policies: policies}
+  end
+
+  defp validate_policies(policies) do
+    Enum.each(policies, &validate_policy/1)
+
+    policies
+  end
+
+  defp validate_policy(%AshPolicyAccess.Policy{condition: {mod, opts}, policies: policies}) do
+    validate_policy({mod, opts})
+
+    Enum.each(policies, &validate_policy/1)
+  end
+
+  defp validate_policy(%AshPolicyAccess.Policy.Check{check_module: mod, check_opts: opts}) do
+    validate_policy({mod, opts})
+  end
+
+  defp validate_policy({mod, _opts}) do
+    if mod.type() == :manual do
+      raise "Manual policies are not supported yet!"
+    end
   end
 end
