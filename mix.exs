@@ -1,10 +1,12 @@
 defmodule AshPolicyAccess.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+
   def project do
     [
       app: :ash_policy_access,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -22,7 +24,8 @@ defmodule AshPolicyAccess.MixProject do
   defp deps do
     [
       {:picosat_elixir, "~> 0.1.1"},
-      {:ash, path: "../ash"}
+      {:git_ops, "~> 2.0.0", only: :dev},
+      {:ash, "~> 0.1.2"}
     ]
   end
 end
