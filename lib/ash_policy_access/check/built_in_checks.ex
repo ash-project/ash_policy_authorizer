@@ -13,6 +13,10 @@ defmodule AshPolicyAccess.Check.BuiltInChecks do
     {AshPolicyAccess.Check.ActionType, [type: action_type]}
   end
 
+  def action(action) do
+    {AshPolicyAccess.Check.Action, [action: action]}
+  end
+
   # def attribute_equals(field, value) do
   #   {AshPolicyAccess.Check.AttributeEquals, field: field, value: value}
   # end

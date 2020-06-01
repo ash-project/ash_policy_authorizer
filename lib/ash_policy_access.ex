@@ -16,7 +16,7 @@ defmodule AshPolicyAccess do
 
   defmacro __using__(_) do
     quote do
-      import AshPolicyAccess.Dsl, only: [policies: 1]
+      import AshPolicyAccess.Dsl, only: [policies: 1, policies: 2]
       Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
       @extensions AshPolicyAccess
       @authorizers AshPolicyAccess.Authorizer

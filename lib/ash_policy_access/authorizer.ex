@@ -4,10 +4,12 @@ defmodule AshPolicyAccess.Authorizer do
     :resource,
     :query,
     :changeset,
+    :data,
     :action,
     :api,
     :verbose?,
     :scenarios,
+    :check_scenarios,
     :real_scenarios,
     policies: [],
     facts: %{true => true, false => false}
@@ -42,12 +44,8 @@ defmodule AshPolicyAccess.Authorizer do
   end
 
   @impl true
-  def check(authorizer, data, context) do
-    IO.inspect(authorizer, label: "check authorizer")
-    IO.inspect(context, label: "check context")
-    IO.inspect(data, label: "data")
-    # Big TODO
-    :authorized
+  def check(authorizer, context) do
+    check_result(%{authorizer | data: context.data})
   end
 
   @impl true
@@ -100,10 +98,141 @@ defmodule AshPolicyAccess.Authorizer do
         raise "unreachable"
 
       {_filters, []} ->
-        {:filter, [or: filter]}
+        case filter do
+          [filter] -> {:filter, filter}
+          filters -> {:filter, [or: filters]}
+        end
 
       {_filters, _require_check} ->
-        {:continue, authorizer}
+        case global_filters(authorizer) do
+          nil ->
+            {:continue, %{authorizer | check_scenarios: authorizer.scenarios}}
+
+          {filters, scenarios_without_global} ->
+            filter =
+              case filters do
+                [single_filter] -> single_filter
+                filters -> [and: filters]
+              end
+
+            {:filter_and_continue, filter,
+             %{authorizer | check_scenarios: scenarios_without_global}}
+        end
+    end
+  end
+
+  defp global_filters(authorizer, scenarios \\ nil, filter \\ []) do
+    scenarios = scenarios || authorizer.scenarios
+
+    global_check_value =
+      Enum.find_value(scenarios, fn scenario ->
+        Enum.find(scenario, fn {{check_module, opts} = check, value} ->
+          check_module.type() == :filter and
+            Keyword.has_key?(opts, :__auto_filter__) and
+            Enum.all?(scenarios, Map.fetch(scenarios, check) == {:ok, value})
+        end)
+      end)
+
+    case global_check_value do
+      nil ->
+        case filter do
+          [] -> nil
+          filter -> {scenarios, filter}
+        end
+
+      {{check_module, check_opts}, value} ->
+        required_status = check_opts[:__auto_filter__] && value
+
+        additional_filter =
+          if required_status do
+            check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+          else
+            [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
+          end
+
+        scenarios = remove_clause(authorizer.scenarios, {check_module, check_opts})
+        global_filters(authorizer, scenarios, [additional_filter | filter])
+    end
+  end
+
+  defp remove_clause(scenarios, clause) do
+    Enum.map(scenarios, &Map.delete(&1, clause))
+  end
+
+  defp check_result(authorizer) do
+    case authorizer.check_scenarios || authorizer.scenarios do
+      [] ->
+        raise "unreachable"
+
+      [scenario] ->
+        case scenario_to_check_filter(scenario, authorizer) do
+          {:ok, filter} ->
+            {:filter, filter}
+
+          {:error, error} ->
+            {:error, error}
+        end
+
+      scenarios ->
+        result =
+          Enum.reduce_while(scenarios, {:ok, []}, fn scenario, {:ok, filters} ->
+            case scenario_to_check_filter(scenario, authorizer) do
+              {:ok, filter} -> {:cont, {:ok, [filter | filters]}}
+              {:error, error} -> {:halt, {:error, error}}
+            end
+          end)
+
+        case result do
+          {:ok, filters} -> {:filter, [or: filters]}
+          {:error, error} -> {:error, error}
+        end
+    end
+  end
+
+  defp scenario_to_check_filter(scenario, authorizer) do
+    filters =
+      Enum.reduce_while(scenario, {:ok, []}, fn {{check_module, check_opts}, required_value},
+                                                {:ok, filters} ->
+        new_filter =
+          case check_module.type() do
+            :simple ->
+              if AshPolicyAccess.Policy.fetch_fact(scenario.facts, {check_module, check_opts}) !=
+                   {:ok, required_value} do
+                raise "Assumption failed"
+              end
+
+              {:ok, filters}
+
+            :filter ->
+              {:ok, check_module.auto_filter(authorizer.actor, authorizer, check_opts)}
+
+            :manual ->
+              case check_module.check(authorizer.actor, authorizer.data, authorizer, check_opts) do
+                {:ok, true} ->
+                  {:ok, nil}
+
+                {:ok, records} ->
+                  case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
+                         authorizer.resource,
+                         records
+                       ) do
+                    [single] -> single
+                    pkey_filters -> [or: pkey_filters]
+                  end
+              end
+          end
+
+        case new_filter do
+          {:ok, nil} -> {:cont, {:ok, filters}}
+          {:ok, new_filter} -> {:cont, {:ok, [new_filter | filters]}}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+      end)
+
+    case filters do
+      {:ok, [filter]} -> {:ok, filter}
+      {:ok, filters} -> {:ok, [and: filters]}
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -135,33 +264,6 @@ defmodule AshPolicyAccess.Authorizer do
   end
 
   defp get_policies(authorizer) do
-    policies =
-      authorizer.resource
-      |> AshPolicyAccess.policies()
-      |> validate_policies()
-
-    %{authorizer | policies: policies}
-  end
-
-  defp validate_policies(policies) do
-    Enum.each(policies, &validate_policy/1)
-
-    policies
-  end
-
-  defp validate_policy(%AshPolicyAccess.Policy{condition: {mod, opts}, policies: policies}) do
-    validate_policy({mod, opts})
-
-    Enum.each(policies, &validate_policy/1)
-  end
-
-  defp validate_policy(%AshPolicyAccess.Policy.Check{check_module: mod, check_opts: opts}) do
-    validate_policy({mod, opts})
-  end
-
-  defp validate_policy({mod, _opts}) do
-    if mod.type() == :manual do
-      raise "Manual policies are not supported yet!"
-    end
+    %{authorizer | policies: AshPolicyAccess.policies(authorizer.resource)}
   end
 end

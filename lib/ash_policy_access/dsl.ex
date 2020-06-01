@@ -1,8 +1,10 @@
 defmodule AshPolicyAccess.Dsl do
-  defmacro policies(do: body) do
+  defmacro policies(access_type \\ nil, do: body) do
     quote do
       Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
-      @access_type :strict
+      @access_type unquote(access_type) || :strict
+      global_access_type = @access_type
+      AshPolicyAccess.Dsl.validate_access_type(@access_type)
 
       import AshPolicyAccess.Check.BuiltInChecks
 
@@ -12,25 +14,26 @@ defmodule AshPolicyAccess.Dsl do
           forbid_if: 1,
           authorize_unless: 1,
           forbid_unless: 1,
-          policy: 2,
-          access_type: 1
+          policy: 2
         ]
 
       unquote(body)
+
+      if Enum.any?(@ash_policies, fn policy -> match?(%AshPolicyAccess.Policy.Check{}, policy) end) do
+        policies = @ash_policies
+        Module.delete_attribute(__MODULE__, :ash_policies)
+
+        Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
+
+        @ash_policies %AshPolicyAccess.Policy{
+          condition: nil,
+          policies: policies,
+          access_type: global_access_type
+        }
+      end
+
       import AshPolicyAccess.Dsl, only: [policies: 1]
       import AshPolicyAccess.Check.BuiltInChecks, only: []
-    end
-  end
-
-  defmacro access_type(type) when type in [:strict, :filter] do
-    quote do
-      @access_type unquote(type)
-    end
-  end
-
-  defmacro access_type(type) do
-    quote do
-      raise "No such access type #{unquote(type)}"
     end
   end
 
@@ -97,6 +100,7 @@ defmodule AshPolicyAccess.Dsl do
       existing_access_type = @access_type
       existing_policies = @ash_policies
       @access_type unquote(access_type) || @access_type || :strict
+      AshPolicyAccess.Dsl.validate_access_type(@access_type)
       Module.delete_attribute(__MODULE__, :ash_policies)
       Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
       unquote(body)
@@ -113,5 +117,13 @@ defmodule AshPolicyAccess.Dsl do
 
       Module.put_attribute(__MODULE__, :access_type, existing_access_type)
     end
+  end
+
+  def validate_access_type(type) when type in [:strict, :filter, :runtime] do
+    :ok
+  end
+
+  def validate_access_type(type) do
+    raise "#{type} is not a valid access type"
   end
 end
