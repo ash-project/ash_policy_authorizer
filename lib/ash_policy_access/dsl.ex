@@ -1,36 +1,19 @@
 defmodule AshPolicyAccess.Dsl do
-  defmacro policies(access_type \\ nil, do: body) do
+  defmacro policies(access_type \\ :strict, do: body) do
     quote do
       Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
-      @access_type unquote(access_type) || :strict
-      global_access_type = @access_type
-      AshPolicyAccess.Dsl.validate_access_type(@access_type)
+      @ash_policy_access_type unquote(access_type)
+
+      AshPolicyAccess.Dsl.validate_access_type(@ash_policy_access_type)
 
       import AshPolicyAccess.Check.BuiltInChecks
 
       import AshPolicyAccess.Dsl,
         only: [
-          authorize_if: 1,
-          forbid_if: 1,
-          authorize_unless: 1,
-          forbid_unless: 1,
-          policy: 2
+          policy: 3
         ]
 
       unquote(body)
-
-      if Enum.any?(@ash_policies, fn policy -> match?(%AshPolicyAccess.Policy.Check{}, policy) end) do
-        policies = @ash_policies
-        Module.delete_attribute(__MODULE__, :ash_policies)
-
-        Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
-
-        @ash_policies %AshPolicyAccess.Policy{
-          condition: nil,
-          policies: policies,
-          access_type: global_access_type
-        }
-      end
 
       import AshPolicyAccess.Dsl, only: [policies: 1]
       import AshPolicyAccess.Check.BuiltInChecks, only: []
@@ -85,8 +68,16 @@ defmodule AshPolicyAccess.Dsl do
     end
   end
 
-  defmacro policy(condition, access_type \\ nil, do: body) do
+  defmacro policy(condition, name, do: body) do
     quote do
+      import AshPolicyAccess.Dsl,
+        only: [
+          authorize_if: 1,
+          forbid_if: 1,
+          authorize_unless: 1,
+          forbid_unless: 1
+        ]
+
       case unquote(condition) do
         nil ->
           :ok
@@ -97,15 +88,13 @@ defmodule AshPolicyAccess.Dsl do
           end
       end
 
-      existing_access_type = @access_type
       existing_policies = @ash_policies
-      @access_type unquote(access_type) || @access_type || :strict
-      AshPolicyAccess.Dsl.validate_access_type(@access_type)
+
       Module.delete_attribute(__MODULE__, :ash_policies)
       Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
       unquote(body)
 
-      policy = AshPolicyAccess.Policy.new(unquote(condition), @ash_policies, @access_type)
+      policy = AshPolicyAccess.Policy.new(unquote(condition), @ash_policies, unquote(name))
 
       Module.delete_attribute(__MODULE__, :ash_policies)
       Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
@@ -114,8 +103,6 @@ defmodule AshPolicyAccess.Dsl do
       existing_policies
       |> Enum.reverse()
       |> Enum.each(&Module.put_attribute(__MODULE__, :ash_policies, &1))
-
-      Module.put_attribute(__MODULE__, :access_type, existing_access_type)
     end
   end
 

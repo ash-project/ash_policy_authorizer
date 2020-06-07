@@ -2,7 +2,7 @@ defmodule AshPolicyAccess.Policy do
   defstruct [
     :condition,
     :policies,
-    access_type: :strict
+    :name
   ]
 
   defmodule Check do
@@ -17,11 +17,11 @@ defmodule AshPolicyAccess.Policy do
     end
   end
 
-  def new(condition, policies, access_type) do
+  def new(condition, policies, name) do
     %__MODULE__{
+      name: name,
       condition: condition,
-      policies: policies,
-      access_type: access_type
+      policies: policies
     }
   end
 
@@ -52,9 +52,9 @@ defmodule AshPolicyAccess.Policy do
     |> get_all_scenarios(expression, [Map.drop(scenario, [true, false]) | scenarios])
   end
 
-  defp remove_irrelevant_clauses([scenario]), do: [scenario]
+  def remove_irrelevant_clauses([scenario]), do: [scenario]
 
-  defp remove_irrelevant_clauses(scenarios) do
+  def remove_irrelevant_clauses(scenarios) do
     new_scenarios =
       scenarios
       |> Enum.uniq()
@@ -147,164 +147,138 @@ defmodule AshPolicyAccess.Policy do
   end
 
   def fetch_fact(facts, {mod, opts}) do
-    Map.fetch(facts, {mod, Keyword.delete(opts, :__auto_filter__)})
+    Map.fetch(facts, {mod, opts})
   end
 
-  defp compile_policy_expression(policies, facts, access_type \\ :strict)
+  defp compile_policy_expression(policies, facts)
 
-  defp compile_policy_expression([], _facts, _) do
+  defp compile_policy_expression([], _facts) do
     false
   end
 
   defp compile_policy_expression(
-         [%__MODULE__{condition: condition, policies: policies} = policy],
-         facts,
-         _access_type
+         [%__MODULE__{condition: condition, policies: policies}],
+         facts
        ) do
     if is_nil(condition) or match?({:ok, true}, fetch_fact(facts, condition)) do
-      compile_policy_expression(policies, facts, policy.access_type)
+      compile_policy_expression(policies, facts)
     else
+      IO.inspect(fetch_fact(facts, condition))
       true
     end
   end
 
   defp compile_policy_expression(
          [
-           %__MODULE__{condition: condition, policies: policies} = policy | rest
+           %__MODULE__{condition: condition, policies: policies} | rest
          ],
-         facts,
-         access_type
+         facts
        ) do
     if is_nil(condition) or match?({:ok, true}, fetch_fact(facts, condition)) do
-      {:and, compile_policy_expression(policies, facts, policy.access_type),
-       compile_policy_expression(rest, facts, access_type)}
+      {:and, compile_policy_expression(policies, facts), compile_policy_expression(rest, facts)}
     else
-      compile_policy_expression(rest, facts, access_type)
+      compile_policy_expression(rest, facts)
     end
   end
 
-  defp compile_policy_expression([%{type: :authorize_if} = clause], facts, access_type) do
+  defp compile_policy_expression(
+         [%{type: :authorize_if} = clause],
+         facts
+       ) do
     case fetch_fact(facts, clause) do
       {:ok, true} ->
         true
 
       {:ok, false} ->
         false
-
-      :error when access_type == :strict ->
-        false
-
-      :error when access_type == :filter ->
-        {clause.check_module, Keyword.put(clause.check_opts, :__auto_filter__, true)}
 
       :error ->
         {clause.check_module, clause.check_opts}
     end
   end
 
-  defp compile_policy_expression([%{type: :authorize_if} = clause | rest], facts, access_type) do
+  defp compile_policy_expression(
+         [%{type: :authorize_if} = clause | rest],
+         facts
+       ) do
     case fetch_fact(facts, clause) do
       {:ok, true} ->
         true
 
       {:ok, false} ->
-        compile_policy_expression(rest, facts, access_type)
-
-      :error when access_type == :strict ->
-        compile_policy_expression(rest, facts, access_type)
-
-      :error when access_type == :filter ->
-        {:or, {clause.check_module, Keyword.put(clause.check_opts, :__auto_filter__, true)},
-         compile_policy_expression(rest, facts, access_type)}
+        compile_policy_expression(rest, facts)
 
       :error ->
-        {:or, {clause.check_module, clause.check_opts},
-         compile_policy_expression(rest, facts, access_type)}
+        {:or, {clause.check_module, clause.check_opts}, compile_policy_expression(rest, facts)}
     end
   end
 
-  defp compile_policy_expression([%{type: :authorize_unless} = clause], facts, access_type) do
+  defp compile_policy_expression(
+         [%{type: :authorize_unless} = clause],
+         facts
+       ) do
     case fetch_fact(facts, clause) do
       {:ok, true} ->
         false
 
       {:ok, false} ->
         true
-
-      :error when access_type == :strict ->
-        false
-
-      :error when access_type == :filter ->
-        {clause.check_module, Keyword.put(clause.check_opts, :__auto_filter__, false)}
 
       :error ->
         {clause.check_module, clause.check_opts}
     end
   end
 
-  defp compile_policy_expression([%{type: :authorize_unless} = clause | rest], facts, access_type) do
+  defp compile_policy_expression(
+         [%{type: :authorize_unless} = clause | rest],
+         facts
+       ) do
     case fetch_fact(facts, clause) do
       {:ok, true} ->
-        compile_policy_expression(rest, facts, access_type)
+        compile_policy_expression(rest, facts)
 
       {:ok, false} ->
         true
 
-      :error when access_type == :strict ->
-        compile_policy_expression(rest, facts, access_type)
-
-      :error when access_type == :filter ->
-        {:or, {clause.check_module, Keyword.put(clause.check_opts, :__auto_filter__, false)},
-         compile_policy_expression(rest, facts, access_type)}
-
       :error ->
-        {:or, {clause.check_module, clause.check_opts},
-         compile_policy_expression(rest, facts, access_type)}
+        {:or, {clause.check_module, clause.check_opts}, compile_policy_expression(rest, facts)}
     end
   end
 
-  defp compile_policy_expression([%{type: :forbid_if}], _facts, _) do
+  defp compile_policy_expression([%{type: :forbid_if}], _facts) do
     false
   end
 
-  defp compile_policy_expression([%{type: :forbid_if} = clause | rest], facts, access_type) do
+  defp compile_policy_expression(
+         [%{type: :forbid_if} = clause | rest],
+         facts
+       ) do
     case fetch_fact(facts, clause) do
       {:ok, true} ->
         false
 
       {:ok, false} ->
-        compile_policy_expression(rest, facts, access_type)
-
-      :error when access_type == :strict ->
-        false
-
-      :error when access_type == :filter ->
-        {:and, {clause.check_module, Keyword.put(clause.check_opts, :__auto_filter__, false)},
-         compile_policy_expression(rest, facts, access_type)}
+        compile_policy_expression(rest, facts)
 
       :error ->
-        {:and, {:not, clause}, compile_policy_expression(rest, facts, access_type)}
+        {:and, {:not, clause}, compile_policy_expression(rest, facts)}
     end
   end
 
-  defp compile_policy_expression([%{type: :forbid_unless}], _facts, _) do
+  defp compile_policy_expression([%{type: :forbid_unless}], _facts) do
     false
   end
 
-  defp compile_policy_expression([%{type: :forbid_unless} = clause | rest], facts, access_type) do
+  defp compile_policy_expression(
+         [%{type: :forbid_unless} = clause | rest],
+         facts
+       ) do
     case fetch_fact(facts, clause) do
       {:ok, true} ->
         compile_policy_expression(rest, facts)
 
       {:ok, false} ->
         false
-
-      :error when access_type == :strict ->
-        false
-
-      :error when access_type == :filter ->
-        {:and, {clause.check_module, Keyword.put(clause.check_opts, :__auto_filter__, true)},
-         compile_policy_expression(rest, facts, access_type)}
 
       :error ->
         {:and, clause, compile_policy_expression(rest, facts)}

@@ -9,8 +9,10 @@ defmodule AshPolicyAccess do
   https://en.wikipedia.org/wiki/Modified_condition/decision_coverage
   """
 
-  @type request :: Ash.Engine.Request.t()
+  @callback ash_policies() :: [AshPolicyAccess.Policy.t()]
+  @callback ash_policy_access_type() :: :strict | :filter | :runtime
 
+  @type request :: Ash.Engine.Request.t()
   @type side_load :: {:side_load, Keyword.t()}
   @type prepare_instruction :: side_load
 
@@ -20,6 +22,7 @@ defmodule AshPolicyAccess do
       Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
       @extensions AshPolicyAccess
       @authorizers AshPolicyAccess.Authorizer
+      @behaviour AshPolicyAccess
       require AshPolicyAccess
     end
   end
@@ -28,10 +31,18 @@ defmodule AshPolicyAccess do
     resource.ash_policies()
   end
 
+  def access_type(resource) do
+    resource.ash_policy_access_type()
+  end
+
   def before_compile_hook(_env) do
     quote do
       def ash_policies() do
         @ash_policies
+      end
+
+      def ash_policy_access_type() do
+        @ash_policy_access_type
       end
     end
   end

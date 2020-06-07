@@ -8,6 +8,6 @@ defmodule AshPolicyAccess.Check.Static do
 
   @impl true
   def match?(_user, _request, options) do
-    {:ok, options[:result]}
+    options[:result]
   end
 end
