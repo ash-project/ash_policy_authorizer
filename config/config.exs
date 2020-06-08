@@ -1,9 +1,9 @@
 use Mix.Config
 
 config :git_ops,
-  mix_project: AshPolicyAccess.MixProject,
+  mix_project: AshPolicyAuthorizer.MixProject,
   changelog_file: "CHANGELOG.md",
-  repository_url: "https://github.com/ash-project/ash_policy_access",
+  repository_url: "https://github.com/ash-project/ash_policy_authorizer",
   # Instructs the tool to manage your mix version in your `mix.exs` file
   # See below for more information
   manage_mix_version?: true,

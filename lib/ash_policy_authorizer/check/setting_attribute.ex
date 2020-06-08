@@ -1,5 +1,5 @@
-# defmodule AshPolicyAccess.Check.SettingAttribute do
-#   use AshPolicyAccess.Check, action_types: [:create, :update]
+# defmodule AshPolicyAuthorizer.Check.SettingAttribute do
+#   use AshPolicyAuthorizer.Check, action_types: [:create, :update]
 
 #   @impl true
 #   def describe(opts) do

@@ -1,5 +1,5 @@
-# defmodule AshPolicyAccess.Check.LoggedIn do
-#   use AshPolicyAccess.Check, action_types: [:read, :update, :delete, :create]
+# defmodule AshPolicyAuthorizer.Check.LoggedIn do
+#   use AshPolicyAuthorizer.Check, action_types: [:read, :update, :delete, :create]
 
 #   @impl true
 #   def describe(_opts) do

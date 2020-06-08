@@ -1,10 +1,10 @@
-defmodule AshPolicyAccess.Check.ActorAttributeMatchesRecord do
+defmodule AshPolicyAuthorizer.Check.ActorAttributeMatchesRecord do
   @moduledoc """
   Simple equality check between a field on the actor and a field
   on the record
   """
 
-  use AshPolicyAccess.FilterCheck
+  use AshPolicyAuthorizer.FilterCheck
 
   @impl true
   def describe(opts) do

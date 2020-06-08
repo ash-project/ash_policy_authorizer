@@ -1,5 +1,5 @@
-# defmodule AshPolicyAccess.Check.RelatingToUser do
-#   use AshPolicyAccess.Check, action_types: [:update, :delete]
+# defmodule AshPolicyAuthorizer.Check.RelatingToUser do
+#   use AshPolicyAuthorizer.Check, action_types: [:update, :delete]
 
 #   @impl true
 #   def describe(opts) do

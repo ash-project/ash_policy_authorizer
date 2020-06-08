@@ -1,5 +1,5 @@
-defmodule AshPolicyAccess.Check.ActionType do
-  use AshPolicyAccess.SimpleCheck
+defmodule AshPolicyAuthorizer.Check.ActionType do
+  use AshPolicyAuthorizer.SimpleCheck
 
   @impl true
   def describe(options) do

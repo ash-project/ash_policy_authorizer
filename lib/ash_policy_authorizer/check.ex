@@ -1,11 +1,11 @@
-defmodule AshPolicyAccess.Check do
+defmodule AshPolicyAuthorizer.Check do
   @moduledoc """
   A behaviour for declaring checks, which can be used to easily construct
   authorization rules.
   """
 
   @type options :: Keyword.t()
-  @type authorizer :: AshPolicyAccess.Authorizer.t()
+  @type authorizer :: AshPolicyAuthorizer.Authorizer.t()
 
   @callback strict_check(Ash.actor(), authorizer(), options) :: boolean | :unknown
   @callback auto_filter(Ash.actor(), authorizer(), options()) :: Keyword.t()
@@ -26,7 +26,7 @@ defmodule AshPolicyAccess.Check do
 
   defmacro __using__(_opts) do
     quote do
-      @behaviour AshPolicyAccess.Check
+      @behaviour AshPolicyAuthorizer.Check
 
       def type(), do: :manual
     end
@@ -34,32 +34,32 @@ defmodule AshPolicyAccess.Check do
 
   defmacro import_default_checks(opts) do
     quote do
-      import AshPolicyAccess.Check.Static, only: [always: 0, never: 0]
-      import AshPolicyAccess.Check.RelatedToUserVia, only: [related_to_user_via: 1]
-      import AshPolicyAccess.Check.SettingAttribute, only: [setting_attribute: 2]
+      import AshPolicyAuthorizer.Check.Static, only: [always: 0, never: 0]
+      import AshPolicyAuthorizer.Check.RelatedToUserVia, only: [related_to_user_via: 1]
+      import AshPolicyAuthorizer.Check.SettingAttribute, only: [setting_attribute: 2]
 
-      import AshPolicyAccess.Check.UserAttributeMatchesRecord,
+      import AshPolicyAuthorizer.Check.UserAttributeMatchesRecord,
         only: [user_attribute_matches_record: 2]
 
-      import AshPolicyAccess.Check.UserAttribute, only: [user_attribute: 2]
+      import AshPolicyAuthorizer.Check.UserAttribute, only: [user_attribute: 2]
 
       if unquote(opts[:attributes]) do
-        import AshPolicyAccess.Check.SettingAttribute,
+        import AshPolicyAuthorizer.Check.SettingAttribute,
           only: [setting_attribute: 2, setting_attribute: 1]
       else
-        import AshPolicyAccess.Check.AttributeEquals, only: [attribute_equals: 2]
+        import AshPolicyAuthorizer.Check.AttributeEquals, only: [attribute_equals: 2]
       end
     end
   end
 
   defmacro unimport_checks() do
     quote do
-      import AshPolicyAccess.Check.Static, only: []
-      import AshPolicyAccess.Check.RelatedToUserVia, only: []
-      import AshPolicyAccess.Check.SettingAttribute, only: []
-      import AshPolicyAccess.Check.UserAttributeMatchesRecord, only: []
-      import AshPolicyAccess.Check.UserAttribute, only: []
-      import AshPolicyAccess.Check.SettingAttribute, only: []
+      import AshPolicyAuthorizer.Check.Static, only: []
+      import AshPolicyAuthorizer.Check.RelatedToUserVia, only: []
+      import AshPolicyAuthorizer.Check.SettingAttribute, only: []
+      import AshPolicyAuthorizer.Check.UserAttributeMatchesRecord, only: []
+      import AshPolicyAuthorizer.Check.UserAttribute, only: []
+      import AshPolicyAuthorizer.Check.SettingAttribute, only: []
     end
   end
 end

@@ -1,5 +1,5 @@
-# defmodule AshPolicyAccess.Check.RelatedToUserVia do
-#   use AshPolicyAccess.Check, action_types: [:read, :update, :delete]
+# defmodule AshPolicyAuthorizer.Check.RelatedToUserVia do
+#   use AshPolicyAuthorizer.Check, action_types: [:read, :update, :delete]
 
 #   @impl true
 #   def describe(opts) do
@@ -23,7 +23,7 @@
 
 #     case Ash.Filter.parse(request.resource, candidate_filter, request.query.api) do
 #       %{errors: []} = parsed ->
-#         if AshPolicyAccess.Filter.strict_subset_of?(parsed, request.query.filter) do
+#         if AshPolicyAuthorizer.Filter.strict_subset_of?(parsed, request.query.filter) do
 #           {:ok, true}
 #         else
 #           {:ok, :unknown}

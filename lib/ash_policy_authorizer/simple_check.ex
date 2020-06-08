@@ -1,11 +1,11 @@
-defmodule AshPolicyAccess.SimpleCheck do
+defmodule AshPolicyAuthorizer.SimpleCheck do
   @type options :: Keyword.t()
   @callback match?(Ash.actor(), map(), options) :: boolean
 
   defmacro __using__(_) do
     quote do
-      @behaviour AshPolicyAccess.SimpleCheck
-      @behaviour AshPolicyAccess.Check
+      @behaviour AshPolicyAuthorizer.SimpleCheck
+      @behaviour AshPolicyAuthorizer.Check
 
       def type(), do: :simple
 

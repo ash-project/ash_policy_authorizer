@@ -1,4 +1,4 @@
-defmodule AshPolicyAccess.Checker do
+defmodule AshPolicyAuthorizer.Checker do
   @moduledoc """
   Determines if a set of authorization requests can be met or not.
 
@@ -14,8 +14,8 @@ defmodule AshPolicyAccess.Checker do
   If you need to write your own checks see #TODO: Link to a guide about writing checks here.
   """
 
-  alias AshPolicyAccess.Policy
-  alias AshPolicyAccess.Policy.Check
+  alias AshPolicyAuthorizer.Policy
+  alias AshPolicyAuthorizer.Policy.Check
 
   def strict_check_facts(%{policies: policies} = authorizer) do
     Enum.reduce(policies, authorizer.facts, &do_strict_check_facts(&1, authorizer, &2))
@@ -38,7 +38,7 @@ defmodule AshPolicyAccess.Checker do
     Enum.reduce(policy.policies, facts, &do_strict_check_facts(&1, authorizer, &2))
   end
 
-  defp do_strict_check_facts(%AshPolicyAccess.Policy.Check{} = check, authorizer, facts) do
+  defp do_strict_check_facts(%AshPolicyAuthorizer.Policy.Check{} = check, authorizer, facts) do
     check_module = check.check_module
     opts = check.check_opts
 
@@ -62,7 +62,7 @@ defmodule AshPolicyAccess.Checker do
     |> Map.drop([true, false])
     |> Enum.reduce_while(:reality, fn {{check_module, opts} = fact, requirement}, status ->
       if Keyword.has_key?(opts, :__auto_filter__) and
-           AshPolicyAccess.Check.defines_check?(check_module) do
+           AshPolicyAuthorizer.Check.defines_check?(check_module) do
         {:cont, status}
       else
         case Map.fetch(facts, fact) do
@@ -83,7 +83,7 @@ defmodule AshPolicyAccess.Checker do
   end
 
   def strict_check_scenarios(authorizer) do
-    case AshPolicyAccess.Policy.solve(authorizer) do
+    case AshPolicyAuthorizer.Policy.solve(authorizer) do
       {:ok, scenarios} ->
         {:ok, scenarios}
 

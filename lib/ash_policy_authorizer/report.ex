@@ -1,5 +1,5 @@
-defmodule AshPolicyAccess.Report do
-  # alias AshPolicyAccess.Clause
+defmodule AshPolicyAuthorizer.Report do
+  # alias AshPolicyAuthorizer.Clause
   # alias Ash.Engine.Request
 
   # defstruct [
@@ -157,7 +157,7 @@ defmodule AshPolicyAccess.Report do
   #         request.data
   #         |> List.wrap()
   #         |> Enum.map(fn item ->
-  #           %{request | query: AshPolicyAccess.Filter.get_pkeys(request, api, item)}
+  #           %{request | query: AshPolicyAuthorizer.Filter.get_pkeys(request, api, item)}
   #         end)
   #       else
   #         [request]

@@ -1,9 +1,9 @@
-defmodule AshPolicyAccess.Forbidden do
+defmodule AshPolicyAuthorizer.Forbidden do
   @moduledoc "Raised when authorization for an action fails"
 
   use Ash.Error
 
-  # alias AshPolicyAccess.Report
+  # alias AshPolicyAuthorizer.Report
 
   def_ash_error([scenarios: [], facts: %{}, verbose?: false], class: :forbidden)
 

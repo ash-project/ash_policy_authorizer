@@ -1,4 +1,4 @@
-defmodule AshPolicyAccess.Policy do
+defmodule AshPolicyAuthorizer.Policy do
   defstruct [
     :condition,
     :policies,

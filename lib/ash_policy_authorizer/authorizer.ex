@@ -1,4 +1,4 @@
-defmodule AshPolicyAccess.Authorizer do
+defmodule AshPolicyAuthorizer.Authorizer do
   defstruct [
     :actor,
     :resource,
@@ -19,7 +19,7 @@ defmodule AshPolicyAccess.Authorizer do
 
   @type t :: %__MODULE__{}
 
-  alias AshPolicyAccess.Checker
+  alias AshPolicyAuthorizer.Checker
 
   @behaviour Ash.Engine.Authorizer
 
@@ -53,7 +53,7 @@ defmodule AshPolicyAccess.Authorizer do
   @impl true
   def strict_check(authorizer, context) do
     access_type =
-      case AshPolicyAccess.access_type(authorizer.resource) do
+      case AshPolicyAuthorizer.access_type(authorizer.resource) do
         :strict ->
           if Ash.Filter.primary_key_filter?(context.query.filter) do
             :runtime
@@ -82,7 +82,7 @@ defmodule AshPolicyAccess.Authorizer do
       authorizer.scenarios
       |> Enum.split_with(fn scenario ->
         Enum.all?(scenario, fn {{check_module, opts}, _value} ->
-          AshPolicyAccess.Policy.fetch_fact(authorizer.facts, {check_module, opts}) != :error ||
+          AshPolicyAuthorizer.Policy.fetch_fact(authorizer.facts, {check_module, opts}) != :error ||
             check_module.type() == :filter
         end)
       end)
@@ -218,7 +218,7 @@ defmodule AshPolicyAccess.Authorizer do
           {:halt, {:error, :forbidden, authorizer}}
 
         scenarios ->
-          cleaned_scenarios = AshPolicyAccess.Policy.remove_irrelevant_clauses(scenarios)
+          cleaned_scenarios = AshPolicyAuthorizer.Policy.remove_irrelevant_clauses(scenarios)
 
           if Enum.any?(cleaned_scenarios, &scenario_applies?(&1, authorizer, record)) do
             {:cont, {:ok, authorizer}}
@@ -282,7 +282,7 @@ defmodule AshPolicyAccess.Authorizer do
             {:halt, {:forbidden, authorizer}}
 
           scenarios ->
-            cleaned_scenarios = AshPolicyAccess.Policy.remove_irrelevant_clauses(scenarios)
+            cleaned_scenarios = AshPolicyAuthorizer.Policy.remove_irrelevant_clauses(scenarios)
 
             if Enum.any?(cleaned_scenarios, &scenario_applies?(&1, new_authorizer, record)) do
               {:cont, {:ok, new_authorizer}}
@@ -337,7 +337,10 @@ defmodule AshPolicyAccess.Authorizer do
         new_filter =
           case check_module.type() do
             :simple ->
-              case AshPolicyAccess.Policy.fetch_fact(scenario.facts, {check_module, check_opts}) do
+              case AshPolicyAuthorizer.Policy.fetch_fact(
+                     scenario.facts,
+                     {check_module, check_opts}
+                   ) do
                 :error ->
                   raise "Assumption failed"
 
@@ -389,7 +392,7 @@ defmodule AshPolicyAccess.Authorizer do
           [] ->
             if authorizer.access_type == :strict do
               {:error,
-               AshPolicyAccess.Forbidden.exception(
+               AshPolicyAuthorizer.Forbidden.exception(
                  verbose?: authorizer.verbose?,
                  facts: authorizer.facts,
                  scenarios: scenarios
@@ -404,7 +407,7 @@ defmodule AshPolicyAccess.Authorizer do
 
       {:error, :unsatisfiable} ->
         {:error,
-         AshPolicyAccess.Forbidden.exception(
+         AshPolicyAuthorizer.Forbidden.exception(
            verbose?: authorizer.verbose?,
            facts: authorizer.facts,
            scenarios: []
@@ -419,6 +422,6 @@ defmodule AshPolicyAccess.Authorizer do
   end
 
   defp get_policies(authorizer) do
-    %{authorizer | policies: AshPolicyAccess.policies(authorizer.resource)}
+    %{authorizer | policies: AshPolicyAuthorizer.policies(authorizer.resource)}
   end
 end

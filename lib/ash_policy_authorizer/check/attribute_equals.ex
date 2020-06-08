@@ -1,5 +1,5 @@
-# defmodule AshPolicyAccess.Check.AttributeEquals do
-#   use AshPolicyAccess.Check, action_types: [:read, :create, :update, :delete]
+# defmodule AshPolicyAuthorizer.Check.AttributeEquals do
+#   use AshPolicyAuthorizer.Check, action_types: [:read, :create, :update, :delete]
 
 #   @impl true
 #   def describe(opts) do
@@ -13,12 +13,12 @@
 
 #     case Ash.Filter.parse(request.resource, [{field, eq: value}], request.query.api) do
 #       %{errors: []} = parsed ->
-#         if AshPolicyAccess.Filter.strict_subset_of?(parsed, request.query.filter) do
+#         if AshPolicyAuthorizer.Filter.strict_subset_of?(parsed, request.query.filter) do
 #           {:ok, true}
 #         else
 #           case Ash.Filter.parse(request.resource, [{field, not_eq: value}], request.query.api) do
 #             %{errors: []} = parsed ->
-#               if AshPolicyAccess.Filter.strict_subset_of?(parsed, request.query.filter) do
+#               if AshPolicyAuthorizer.Filter.strict_subset_of?(parsed, request.query.filter) do
 #                 {:ok, false}
 #               else
 #                 {:ok, :unknown}

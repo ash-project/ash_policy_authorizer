@@ -1,4 +1,4 @@
-defmodule AshPolicyAccess do
+defmodule AshPolicyAuthorizer do
   @moduledoc """
   Authorization in Ash is done via declaring `rules` for actions,
   and in the case of stateful actions, via declaring `authoriation_steps` on attributes
@@ -9,8 +9,8 @@ defmodule AshPolicyAccess do
   https://en.wikipedia.org/wiki/Modified_condition/decision_coverage
   """
 
-  @callback ash_policies() :: [AshPolicyAccess.Policy.t()]
-  @callback ash_policy_access_type() :: :strict | :filter | :runtime
+  @callback ash_policies() :: [AshPolicyAuthorizer.Policy.t()]
+  @callback ash_policy_authorizer_type() :: :strict | :filter | :runtime
 
   @type request :: Ash.Engine.Request.t()
   @type side_load :: {:side_load, Keyword.t()}
@@ -18,12 +18,12 @@ defmodule AshPolicyAccess do
 
   defmacro __using__(_) do
     quote do
-      import AshPolicyAccess.Dsl, only: [policies: 1, policies: 2]
+      import AshPolicyAuthorizer.Dsl, only: [policies: 1, policies: 2]
       Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
-      @extensions AshPolicyAccess
-      @authorizers AshPolicyAccess.Authorizer
-      @behaviour AshPolicyAccess
-      require AshPolicyAccess
+      @extensions AshPolicyAuthorizer
+      @authorizers AshPolicyAuthorizer.Authorizer
+      @behaviour AshPolicyAuthorizer
+      require AshPolicyAuthorizer
     end
   end
 
@@ -32,7 +32,7 @@ defmodule AshPolicyAccess do
   end
 
   def access_type(resource) do
-    resource.ash_policy_access_type()
+    resource.ash_policy_authorizer_type()
   end
 
   def before_compile_hook(_env) do
@@ -41,8 +41,8 @@ defmodule AshPolicyAccess do
         @ash_policies
       end
 
-      def ash_policy_access_type() do
-        @ash_policy_access_type
+      def ash_policy_authorizer_type() do
+        @ash_policy_authorizer_type
       end
     end
   end

@@ -1,22 +1,22 @@
-defmodule AshPolicyAccess.Dsl do
+defmodule AshPolicyAuthorizer.Dsl do
   defmacro policies(access_type \\ :strict, do: body) do
     quote do
       Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
-      @ash_policy_access_type unquote(access_type)
+      @ash_policy_authorizer_type unquote(access_type)
 
-      AshPolicyAccess.Dsl.validate_access_type(@ash_policy_access_type)
+      AshPolicyAuthorizer.Dsl.validate_access_type(@ash_policy_authorizer_type)
 
-      import AshPolicyAccess.Check.BuiltInChecks
+      import AshPolicyAuthorizer.Check.BuiltInChecks
 
-      import AshPolicyAccess.Dsl,
+      import AshPolicyAuthorizer.Dsl,
         only: [
           policy: 3
         ]
 
       unquote(body)
 
-      import AshPolicyAccess.Dsl, only: [policies: 1]
-      import AshPolicyAccess.Check.BuiltInChecks, only: []
+      import AshPolicyAuthorizer.Dsl, only: [policies: 1]
+      import AshPolicyAuthorizer.Check.BuiltInChecks, only: []
     end
   end
 
@@ -24,7 +24,7 @@ defmodule AshPolicyAccess.Dsl do
     quote do
       {check_module, check_opts} = unquote(check)
 
-      @ash_policies AshPolicyAccess.Policy.Check.new(
+      @ash_policies AshPolicyAuthorizer.Policy.Check.new(
                       :authorize_if,
                       check_module,
                       check_opts
@@ -36,7 +36,7 @@ defmodule AshPolicyAccess.Dsl do
     quote do
       {check_module, check_opts} = unquote(check)
 
-      @ash_policies AshPolicyAccess.Policy.Check.new(
+      @ash_policies AshPolicyAuthorizer.Policy.Check.new(
                       :authorize_unless,
                       check_module,
                       check_opts
@@ -48,7 +48,7 @@ defmodule AshPolicyAccess.Dsl do
     quote do
       {check_module, check_opts} = unquote(check)
 
-      @ash_policies AshPolicyAccess.Policy.Check.new(
+      @ash_policies AshPolicyAuthorizer.Policy.Check.new(
                       :forbid_if,
                       check_module,
                       check_opts
@@ -60,7 +60,7 @@ defmodule AshPolicyAccess.Dsl do
     quote do
       {check_module, check_opts} = unquote(check)
 
-      @ash_policies AshPolicyAccess.Policy.Check.new(
+      @ash_policies AshPolicyAuthorizer.Policy.Check.new(
                       :forbid_unless,
                       check_module,
                       check_opts
@@ -70,7 +70,7 @@ defmodule AshPolicyAccess.Dsl do
 
   defmacro policy(condition, name, do: body) do
     quote do
-      import AshPolicyAccess.Dsl,
+      import AshPolicyAuthorizer.Dsl,
         only: [
           authorize_if: 1,
           forbid_if: 1,
@@ -94,7 +94,7 @@ defmodule AshPolicyAccess.Dsl do
       Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
       unquote(body)
 
-      policy = AshPolicyAccess.Policy.new(unquote(condition), @ash_policies, unquote(name))
+      policy = AshPolicyAuthorizer.Policy.new(unquote(condition), @ash_policies, unquote(name))
 
       Module.delete_attribute(__MODULE__, :ash_policies)
       Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)

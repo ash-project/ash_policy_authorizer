@@ -1,32 +1,32 @@
-defmodule AshPolicyAccess.MixProject do
+defmodule AshPolicyAuthorizer.MixProject do
   use Mix.Project
 
   @version "0.1.0"
 
   @description """
-  A policy based access authorizer for the Ash Framework
+  A policy based authorizer for the Ash Framework
   """
 
   def project do
     [
-      app: :ash_policy_access,
+      app: :ash_policy_authorizer,
       version: @version,
       package: package(),
       description: @description,
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      source_url: "https://github.com/ash-project/ash_policy_access",
-      homepage_url: "https://github.com/ash-project/ash_policy_access"
+      source_url: "https://github.com/ash-project/ash_policy_authorizer",
+      homepage_url: "https://github.com/ash-project/ash_policy_authorizer"
     ]
   end
 
   def package() do
     [
-      name: :ash_policy_access,
+      name: :ash_policy_authorizer,
       licenses: ["MIT"],
       links: %{
-        GitHub: "https://github.com/ash-project/ash_policy_access"
+        GitHub: "https://github.com/ash-project/ash_policy_authorizer"
       }
     ]
   end

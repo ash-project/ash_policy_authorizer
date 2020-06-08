@@ -1,5 +1,5 @@
-# defmodule AshPolicyAccess.Check.SettingRelationship do
-#   use AshPolicyAccess.Check, action_types: [:create, :update]
+# defmodule AshPolicyAuthorizer.Check.SettingRelationship do
+#   use AshPolicyAuthorizer.Check, action_types: [:create, :update]
 
 #   @impl true
 #   def describe(opts) do

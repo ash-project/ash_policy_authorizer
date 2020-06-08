@@ -1,17 +1,17 @@
-defmodule AshPolicyAccess.FilterCheck do
+defmodule AshPolicyAuthorizer.FilterCheck do
   @type options :: Keyword.t()
   @callback filter(options()) :: Keyword.t()
   @optional_callbacks [filter: 1]
 
   defmacro __using__(_) do
     quote do
-      @behaviour AshPolicyAccess.FilterCheck
-      @behaviour AshPolicyAccess.Check
+      @behaviour AshPolicyAuthorizer.FilterCheck
+      @behaviour AshPolicyAuthorizer.Check
 
       def type(), do: :filter
 
       def strict_check_context(opts) do
-        # field_access = AshPolicyAccess.FilterCheck.fields(filter(opts))
+        # field_access = AshPolicyAuthorizer.FilterCheck.fields(filter(opts))
         # TODO: At some point, we'll support partial actor evaluation
         # (A.K.A lazy evaluation of the actor. use this interface for that)
 
@@ -21,7 +21,7 @@ defmodule AshPolicyAccess.FilterCheck do
       def strict_check(nil, _, _), do: false
 
       def strict_check(actor, %{query: %{filter: candidate}, resource: resource, api: api}, opts) do
-        filter = AshPolicyAccess.FilterCheck.build_filter(filter(opts), actor)
+        filter = AshPolicyAuthorizer.FilterCheck.build_filter(filter(opts), actor)
 
         # TODO: Move this filter building to compile-time, with some kind of provision
         # for sentinal values in the filter parsing (so {:_actor, :field} doesn't break)
@@ -50,7 +50,7 @@ defmodule AshPolicyAccess.FilterCheck do
       end
 
       def auto_filter(actor, _auuthorizer, opts) do
-        AshPolicyAccess.FilterCheck.build_filter(filter(opts), actor)
+        AshPolicyAuthorizer.FilterCheck.build_filter(filter(opts), actor)
       end
 
       def check(actor, data, authorizer, opts) do
