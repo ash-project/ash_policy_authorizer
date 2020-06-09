@@ -1,4 +1,5 @@
 defmodule AshPolicyAuthorizer.MixProject do
+  @moduledoc false
   use Mix.Project
 
   @version "0.1.1"
@@ -27,7 +28,7 @@ defmodule AshPolicyAuthorizer.MixProject do
     ]
   end
 
-  def package() do
+  def package do
     [
       name: :ash_policy_authorizer,
       licenses: ["MIT"],
