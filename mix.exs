@@ -20,6 +20,7 @@ defmodule AshPolicyAuthorizer.MixProject do
         coveralls: :test,
         "coveralls.github": :test
       ],
+      aliases: aliases(),
       deps: deps(),
       source_url: "https://github.com/ash-project/ash_policy_authorizer",
       homepage_url: "https://github.com/ash-project/ash_policy_authorizer"
@@ -54,6 +55,13 @@ defmodule AshPolicyAuthorizer.MixProject do
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:excoveralls, "~> 0.13.0", only: [:dev, :test]},
       {:sobelow, ">= 0.0.0", only: :dev, runtime: false}
+    ]
+  end
+
+  defp aliases do
+    [
+      sobelow: "sobelow --skip",
+      credo: "credo --strict"
     ]
   end
 end
