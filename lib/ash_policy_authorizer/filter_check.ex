@@ -18,7 +18,7 @@ defmodule AshPolicyAuthorizer.FilterCheck do
         [:query]
       end
 
-      def strict_check(nil, _, _), do: false
+      def strict_check(nil, _, _), do: {:ok, false}
 
       def strict_check(actor, %{query: %{filter: candidate}, resource: resource, api: api}, opts) do
         filter = AshPolicyAuthorizer.FilterCheck.build_filter(filter(opts), actor)

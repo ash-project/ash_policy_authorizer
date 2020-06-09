@@ -15,6 +15,11 @@ defmodule AshPolicyAuthorizer.MixProject do
       description: @description,
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.github": :test
+      ],
       deps: deps(),
       source_url: "https://github.com/ash-project/ash_policy_authorizer",
       homepage_url: "https://github.com/ash-project/ash_policy_authorizer"
@@ -41,10 +46,13 @@ defmodule AshPolicyAuthorizer.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:picosat_elixir, "~> 0.1.1"},
       {:git_ops, "~> 2.0.0", only: :dev},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
-      {:ash, "~> 0.1.2"}
+      {:ash, github: "ash-project/ash", ref: "0092af6a94dffe6480d345389c313d5b14dbfc39"},
+      {:ex_check, "~> 0.11.0", only: :dev},
+      {:credo, ">= 0.0.0", only: :dev, runtime: false},
+      {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
+      {:excoveralls, "~> 0.13.0", only: [:dev, :test]}
     ]
   end
 end

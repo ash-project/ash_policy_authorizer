@@ -148,7 +148,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
       Enum.find_value(scenarios, fn scenario ->
         Enum.find(scenario, fn {{check_module, _opts} = check, value} ->
           check_module.type == :filter &&
-            Enum.all?(scenarios, Map.fetch(scenarios, check) == {:ok, value})
+            Enum.all?(scenarios, &(Map.fetch(&1, check) == {:ok, value}))
         end)
       end)
 
@@ -218,7 +218,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
           {:halt, {:error, :forbidden, authorizer}}
 
         scenarios ->
-          cleaned_scenarios = AshPolicyAuthorizer.Policy.remove_irrelevant_clauses(scenarios)
+          cleaned_scenarios = AshPolicyAuthorizer.SatSolver.remove_irrelevant_clauses(scenarios)
 
           if Enum.any?(cleaned_scenarios, &scenario_applies?(&1, authorizer, record)) do
             {:cont, {:ok, authorizer}}
@@ -270,25 +270,24 @@ defmodule AshPolicyAuthorizer.Authorizer do
   end
 
   defp check_facts_until_known(scenarios, authorizer, record) do
+    new_authorizer =
+      scenarios
+      |> find_fact_to_check(authorizer)
+      |> check_fact(authorizer)
+
     scenarios
-    |> find_fact_to_check(authorizer)
-    |> check_fact(authorizer)
+    |> Enum.reject(&scenario_impossible?(&1, new_authorizer, record))
     |> case do
-      {:ok, new_authorizer} ->
-        scenarios
-        |> Enum.reject(&scenario_impossible?(&1, new_authorizer, record))
-        |> case do
-          [] ->
-            {:halt, {:forbidden, authorizer}}
+      [] ->
+        {:halt, {:forbidden, authorizer}}
 
-          scenarios ->
-            cleaned_scenarios = AshPolicyAuthorizer.Policy.remove_irrelevant_clauses(scenarios)
+      scenarios ->
+        cleaned_scenarios = AshPolicyAuthorizer.SatSolver.remove_irrelevant_clauses(scenarios)
 
-            if Enum.any?(cleaned_scenarios, &scenario_applies?(&1, new_authorizer, record)) do
-              {:cont, {:ok, new_authorizer}}
-            else
-              check_facts_until_known(scenarios, new_authorizer, record)
-            end
+        if Enum.any?(cleaned_scenarios, &scenario_applies?(&1, new_authorizer, record)) do
+          {:cont, {:ok, new_authorizer}}
+        else
+          check_facts_until_known(scenarios, new_authorizer, record)
         end
     end
   end

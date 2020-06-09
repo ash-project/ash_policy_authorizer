@@ -6,14 +6,14 @@ defmodule AshPolicyAuthorizer.Check do
 
   @type options :: Keyword.t()
   @type authorizer :: AshPolicyAuthorizer.Authorizer.t()
+  @type check_type :: :simple | :filter | :manual
 
-  @callback strict_check(Ash.actor(), authorizer(), options) :: boolean | :unknown
+  @callback strict_check(Ash.actor(), authorizer(), options) :: {:ok, boolean | :unknown}
   @callback auto_filter(Ash.actor(), authorizer(), options()) :: Keyword.t()
   @callback check(Ash.actor(), list(Ash.record()), map, options) ::
               {:ok, list(Ash.record()) | boolean} | {:error, Ash.error()}
   @callback describe(options()) :: String.t()
-  @callback type() :: :atom
-
+  @callback type() :: check_type()
   @optional_callbacks check: 4, auto_filter: 3
 
   def defines_check?(module) do
