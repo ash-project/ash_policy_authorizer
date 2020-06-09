@@ -1,8 +1,9 @@
 defmodule AshPolicyAuthorizerTest do
+  @doc false
   use ExUnit.Case
   doctest AshPolicyAuthorizer
 
-  test "greets the world" do
-    assert AshPolicyAuthorizer.hello() == :world
+  test "works" do
+    assert true
   end
 end
