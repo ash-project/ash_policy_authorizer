@@ -1,4 +1,5 @@
 defmodule AshPolicyAuthorizer.Policy do
+  @moduledoc false
   defstruct [
     :condition,
     :policies,
@@ -8,6 +9,7 @@ defmodule AshPolicyAuthorizer.Policy do
   @type t :: %__MODULE__{}
 
   defmodule Check do
+    @moduledoc false
     defstruct [:check_module, :check_opts, :type]
 
     @type t :: %__MODULE__{}
@@ -69,7 +71,6 @@ defmodule AshPolicyAuthorizer.Policy do
     if is_nil(condition) or match?({:ok, true}, fetch_fact(facts, condition)) do
       compile_policy_expression(policies, facts)
     else
-      IO.inspect(fetch_fact(facts, condition))
       true
     end
   end

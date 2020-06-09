@@ -1,4 +1,5 @@
 defmodule AshPolicyAuthorizer.Check.ActionType do
+  @moduledoc "This check is true when the action type matches the provided type"
   use AshPolicyAuthorizer.SimpleCheck
 
   @impl true

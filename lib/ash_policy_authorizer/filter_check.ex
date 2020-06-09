@@ -1,4 +1,10 @@
 defmodule AshPolicyAuthorizer.FilterCheck do
+  @moduledoc """
+  A type of check that is represented by a filter statement
+
+  That filter statement can be templated, currently only supporting `{:_actor, field}`
+  which will replace that portion of the filter with the appropriate field value from the actor.
+  """
   @type options :: Keyword.t()
   @callback filter(options()) :: Keyword.t()
   @optional_callbacks [filter: 1]
@@ -8,13 +14,9 @@ defmodule AshPolicyAuthorizer.FilterCheck do
       @behaviour AshPolicyAuthorizer.FilterCheck
       @behaviour AshPolicyAuthorizer.Check
 
-      def type(), do: :filter
+      def type, do: :filter
 
       def strict_check_context(opts) do
-        # field_access = AshPolicyAuthorizer.FilterCheck.fields(filter(opts))
-        # TODO: At some point, we'll support partial actor evaluation
-        # (A.K.A lazy evaluation of the actor. use this interface for that)
-
         [:query]
       end
 
@@ -23,9 +25,6 @@ defmodule AshPolicyAuthorizer.FilterCheck do
       def strict_check(actor, %{query: %{filter: candidate}, resource: resource, api: api}, opts) do
         filter = AshPolicyAuthorizer.FilterCheck.build_filter(filter(opts), actor)
 
-        # TODO: Move this filter building to compile-time, with some kind of provision
-        # for sentinal values in the filter parsing (so {:_actor, :field} doesn't break)
-        # type checking
         case Ash.Filter.parse(resource, filter, api) do
           %{errors: []} = parsed_filter ->
             if Ash.Filter.strict_subset_of?(parsed_filter, candidate) do
@@ -114,8 +113,6 @@ defmodule AshPolicyAuthorizer.FilterCheck do
       other ->
         walk_filter(other, mapper)
     end
-
-    Enum.into(filter, %{}, &walk_filter(&1, mapper))
   end
 
   defp walk_filter(tuple, mapper) when is_tuple(tuple) do

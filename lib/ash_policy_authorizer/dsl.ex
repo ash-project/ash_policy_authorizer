@@ -1,4 +1,5 @@
 defmodule AshPolicyAuthorizer.Dsl do
+  @moduledoc "The dsl for ash policy authorizer"
   defmacro policies(access_type \\ :strict, do: body) do
     quote do
       Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)

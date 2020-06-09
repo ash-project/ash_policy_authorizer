@@ -3,8 +3,6 @@ defmodule AshPolicyAuthorizer.Forbidden do
 
   use Ash.Error
 
-  # alias AshPolicyAuthorizer.Report
-
   def_ash_error([scenarios: [], facts: %{}, verbose?: false], class: :forbidden)
 
   defimpl Ash.ErrorKind do
@@ -25,20 +23,6 @@ defmodule AshPolicyAuthorizer.Forbidden do
     def code(_), do: "ForbiddenByPolicy"
 
     def description(%{errors: errors}) when not is_nil(errors) do
-      # report = %Report{
-      #   api: error.api,
-      #   scenarios: error.scenarios,
-      #   requests: error.requests,
-      #   facts: error.facts,
-      #   state: error.state,
-      #   no_steps_configured: error.no_steps_configured,
-      #   header: "forbidden by policy:",
-      #   authorized?: false
-      # }
-
-      # Report.report(report)
-
-      # Ash.Error.error_descriptions(errors)
       "Forbidden"
     end
 

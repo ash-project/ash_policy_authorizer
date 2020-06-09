@@ -1,4 +1,6 @@
 defmodule AshPolicyAuthorizer.Authorizer do
+  @moduledoc false
+
   defstruct [
     :actor,
     :resource,
@@ -19,6 +21,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
 
   @type t :: %__MODULE__{}
 
+  alias Ash.Actions.PrimaryKeyHelpers
   alias AshPolicyAuthorizer.Checker
 
   @behaviour Ash.Engine.Authorizer
@@ -35,8 +38,6 @@ defmodule AshPolicyAuthorizer.Authorizer do
 
   @impl true
   def strict_check_context(_authorizer) do
-    # TODO: Figure out what fields we actually need,
-    # probably something on the check module
     [:query, :changeset, :api, :resource]
   end
 
@@ -87,26 +88,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
         end)
       end)
 
-    filter =
-      filterable
-      |> Enum.reduce([], fn scenario, or_filters ->
-        and_filter =
-          Enum.reduce(scenario, [], fn {{check_module, check_opts}, value}, and_filters ->
-            if check_module.type() == :filter do
-              required_status = value
-
-              if required_status do
-                check_module.auto_filter(authorizer.actor, authorizer, check_opts)
-              else
-                [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
-              end
-            else
-              and_filters
-            end
-          end)
-
-        [and_filter | or_filters]
-      end)
+    filter = strict_filters(filterable, authorizer)
 
     case {filter, require_check} do
       {[], []} ->
@@ -119,25 +101,46 @@ defmodule AshPolicyAuthorizer.Authorizer do
         end
 
       {_filters, _require_check} ->
-        # TODO remove `filter_and_continue` from authorizer behavior
         case global_filters(authorizer) do
           nil ->
-            if authorizer.access_type == :runtime do
-              {:continue, %{authorizer | check_scenarios: authorizer.scenarios}}
-            else
-              {:error, :forbidden}
-            end
+            maybe_forbid_strict(authorizer)
+
+          {[single_filter], scenarios_without_global} ->
+            {:filter_and_continue, single_filter,
+             %{authorizer | check_scenarios: scenarios_without_global}}
 
           {filters, scenarios_without_global} ->
-            filter =
-              case filters do
-                [single_filter] -> single_filter
-                filters -> [and: filters]
-              end
-
-            {:filter_and_continue, filter,
+            {:filter_and_continue, [and: filters],
              %{authorizer | check_scenarios: scenarios_without_global}}
         end
+    end
+  end
+
+  defp strict_filters(filterable, authorizer) do
+    filterable
+    |> Enum.reduce([], fn scenario, or_filters ->
+      and_filter =
+        scenario
+        |> Enum.filter(fn {check_module, _} ->
+          check_module.type() == :filter
+        end)
+        |> Enum.map(fn
+          {{check_module, check_opts}, true} ->
+            check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+
+          {{check_module, check_opts}, false} ->
+            [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
+        end)
+
+      [and_filter | or_filters]
+    end)
+  end
+
+  defp maybe_forbid_strict(authorizer) do
+    if authorizer.access_type == :runtime do
+      {:continue, %{authorizer | check_scenarios: authorizer.scenarios}}
+    else
+      {:error, :forbidden}
     end
   end
 
@@ -194,18 +197,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
         end
 
       scenarios ->
-        result =
-          Enum.reduce_while(scenarios, {:ok, []}, fn scenario, {:ok, filters} ->
-            case scenario_to_check_filter(scenario, authorizer) do
-              {:ok, filter} -> {:cont, {:ok, [filter | filters]}}
-              {:error, error} -> {:halt, {:error, error}}
-            end
-          end)
-
-        case result do
-          {:ok, filters} -> {:filter, [or: filters]}
-          {:error, error} -> {:error, error}
-        end
+        scenarios_to_filter(scenarios, authorizer)
     end
   end
 
@@ -218,15 +210,34 @@ defmodule AshPolicyAuthorizer.Authorizer do
           {:halt, {:error, :forbidden, authorizer}}
 
         scenarios ->
-          cleaned_scenarios = AshPolicyAuthorizer.SatSolver.remove_irrelevant_clauses(scenarios)
-
-          if Enum.any?(cleaned_scenarios, &scenario_applies?(&1, authorizer, record)) do
-            {:cont, {:ok, authorizer}}
-          else
-            check_facts_until_known(scenarios, authorizer, record)
-          end
+          scenarios
+          |> AshPolicyAuthorizer.SatSolver.remove_irrelevant_clauses()
+          |> do_check_result(authorizer, record)
       end
     end)
+  end
+
+  defp scenarios_to_filter(scenarios, authorizer) do
+    result =
+      Enum.reduce_while(scenarios, {:ok, []}, fn scenario, {:ok, filters} ->
+        case scenario_to_check_filter(scenario, authorizer) do
+          {:ok, filter} -> {:cont, {:ok, [filter | filters]}}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+      end)
+
+    case result do
+      {:ok, filters} -> {:filter, [or: filters]}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp do_check_result(cleaned_scenarios, authorizer, record) do
+    if Enum.any?(cleaned_scenarios, &scenario_applies?(&1, authorizer, record)) do
+      {:cont, {:ok, authorizer}}
+    else
+      check_facts_until_known(cleaned_scenarios, authorizer, record)
+    end
   end
 
   defp scenario_applies?(scenario, authorizer, record) do
@@ -236,17 +247,21 @@ defmodule AshPolicyAuthorizer.Authorizer do
           true
 
         _ ->
-          case Map.fetch(authorizer.data_facts, clause) do
-            {:ok, ids_that_match} ->
-              pkey = Map.take(record, Ash.primary_key(authorizer.resource))
-
-              MapSet.member?(ids_that_match, pkey)
-
-            _ ->
-              false
-          end
+          scenario_applies_to_record?(authorizer, clause, record)
       end
     end)
+  end
+
+  defp scenario_applies_to_record?(authorizer, clause, record) do
+    case Map.fetch(authorizer.data_facts, clause) do
+      {:ok, ids_that_match} ->
+        pkey = Map.take(record, Ash.primary_key(authorizer.resource))
+
+        MapSet.member?(ids_that_match, pkey)
+
+      _ ->
+        false
+    end
   end
 
   defp scenario_impossible?(scenario, authorizer, record) do
@@ -256,17 +271,21 @@ defmodule AshPolicyAuthorizer.Authorizer do
           true
 
         _ ->
-          case Map.fetch(authorizer.data_facts, clause) do
-            {:ok, ids_that_match} ->
-              pkey = Map.take(record, Ash.primary_key(authorizer.resource))
-
-              not MapSet.member?(ids_that_match, pkey)
-
-            _ ->
-              false
-          end
+          scenario_impossible_by_data?(authorizer, clause, record)
       end
     end)
+  end
+
+  defp scenario_impossible_by_data?(authorizer, clause, record) do
+    case Map.fetch(authorizer.data_facts, clause) do
+      {:ok, ids_that_match} ->
+        pkey = Map.take(record, Ash.primary_key(authorizer.resource))
+
+        not MapSet.member?(ids_that_match, pkey)
+
+      _ ->
+        false
+    end
   end
 
   defp check_facts_until_known(scenarios, authorizer, record) do
@@ -310,13 +329,6 @@ defmodule AshPolicyAuthorizer.Authorizer do
     end
   end
 
-  # TODO: Make a ticket for making this better
-  # We can optimize this with heuristics. Perhaps we check the one that appears in the most scenarios
-  # or perhaps we pick the one that is most likely to invalidate/validate a scenario (as in its the last
-  # unknown clause in the most scenarios)
-
-  # TODO: Document and validate that a resource must have a primary key in order to use manual checks
-  # (maybe they don't and we just check the equality of all attributes?)
   defp find_fact_to_check(scenarios, authorizer) do
     scenarios
     |> Enum.concat()
@@ -336,38 +348,13 @@ defmodule AshPolicyAuthorizer.Authorizer do
         new_filter =
           case check_module.type() do
             :simple ->
-              case AshPolicyAuthorizer.Policy.fetch_fact(
-                     scenario.facts,
-                     {check_module, check_opts}
-                   ) do
-                :error ->
-                  raise "Assumption failed"
-
-                {:ok, value} ->
-                  if value == required_value do
-                    {:ok, nil}
-                  else
-                    {:ok, impossible: true}
-                  end
-              end
+              filter_for_simple_check(authorizer, check_module, check_opts, required_value)
 
             :filter ->
               {:ok, check_module.auto_filter(authorizer.actor, authorizer, check_opts)}
 
             :manual ->
-              case check_module.check(authorizer.actor, authorizer.data, authorizer, check_opts) do
-                {:ok, true} ->
-                  {:ok, nil}
-
-                {:ok, records} ->
-                  case Ash.Actions.PrimaryKeyHelpers.values_to_primary_key_filters(
-                         authorizer.resource,
-                         records
-                       ) do
-                    [single] -> single
-                    pkey_filters -> [or: pkey_filters]
-                  end
-              end
+              filter_for_manual_check(authorizer, check_module, check_opts)
           end
 
         case new_filter do
@@ -384,21 +371,49 @@ defmodule AshPolicyAuthorizer.Authorizer do
     end
   end
 
+  defp filter_for_manual_check(authorizer, check_module, check_opts) do
+    case check_module.check(authorizer.actor, authorizer.data, authorizer, check_opts) do
+      {:ok, true} ->
+        {:ok, nil}
+
+      {:ok, records} ->
+        primary_keys_to_filter(authorizer.resource, records)
+    end
+  end
+
+  defp filter_for_simple_check(authorizer, check_module, check_opts, required_value) do
+    case AshPolicyAuthorizer.Policy.fetch_fact(
+           authorizer.facts,
+           {check_module, check_opts}
+         ) do
+      :error ->
+        raise "Assumption failed"
+
+      {:ok, value} ->
+        if value == required_value do
+          {:ok, nil}
+        else
+          {:ok, impossible: true}
+        end
+    end
+  end
+
+  defp primary_keys_to_filter(resource, records) do
+    case PrimaryKeyHelpers.values_to_primary_key_filters(
+           resource,
+           records
+         ) do
+      [single] -> single
+      pkey_filters -> [or: pkey_filters]
+    end
+  end
+
   defp strict_check_result(authorizer) do
     case Checker.strict_check_scenarios(authorizer) do
       {:ok, scenarios} ->
         case Checker.find_real_scenarios(scenarios, authorizer.facts) do
           [] ->
-            if authorizer.access_type == :strict do
-              {:error,
-               AshPolicyAuthorizer.Forbidden.exception(
-                 verbose?: authorizer.verbose?,
-                 facts: authorizer.facts,
-                 scenarios: scenarios
-               )}
-            else
-              strict_filter(%{authorizer | scenarios: scenarios})
-            end
+            maybe_strict_filter(authorizer, scenarios)
 
           _real_scenarios ->
             :authorized
@@ -411,6 +426,19 @@ defmodule AshPolicyAuthorizer.Authorizer do
            facts: authorizer.facts,
            scenarios: []
          )}
+    end
+  end
+
+  defp maybe_strict_filter(authorizer, scenarios) do
+    if authorizer.access_type == :strict do
+      {:error,
+       AshPolicyAuthorizer.Forbidden.exception(
+         verbose?: authorizer.verbose?,
+         facts: authorizer.facts,
+         scenarios: scenarios
+       )}
+    else
+      strict_filter(%{authorizer | scenarios: scenarios})
     end
   end
 

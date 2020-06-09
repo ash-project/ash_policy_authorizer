@@ -1,4 +1,5 @@
 defmodule AshPolicyAuthorizer.SatSolver do
+  @moduledoc false
   def solve(expression) do
     expression
     |> add_negations_and_solve([])
@@ -31,23 +32,7 @@ defmodule AshPolicyAuthorizer.SatSolver do
       scenarios
       |> Enum.uniq()
       |> Enum.map(fn scenario ->
-        unnecessary_fact =
-          Enum.find_value(scenario, fn
-            {fact, value_in_this_scenario} ->
-              matching =
-                Enum.find(scenarios, fn potential_irrelevant_maker ->
-                  potential_irrelevant_maker != scenario &&
-                    Map.delete(scenario, fact) == Map.delete(potential_irrelevant_maker, fact)
-                end)
-
-              case matching do
-                %{^fact => value} when is_boolean(value) and value != value_in_this_scenario ->
-                  fact
-
-                _ ->
-                  false
-              end
-          end)
+        unnecessary_fact = find_unnecessary_fact(scenario, scenarios)
 
         Map.delete(scenario, unnecessary_fact)
       end)
@@ -58,6 +43,25 @@ defmodule AshPolicyAuthorizer.SatSolver do
     else
       remove_irrelevant_clauses(new_scenarios)
     end
+  end
+
+  defp find_unnecessary_fact(scenario, scenarios) do
+    Enum.find_value(scenario, fn
+      {fact, value_in_this_scenario} ->
+        matching =
+          Enum.find(scenarios, fn potential_irrelevant_maker ->
+            potential_irrelevant_maker != scenario &&
+              Map.delete(scenario, fact) == Map.delete(potential_irrelevant_maker, fact)
+          end)
+
+        case matching do
+          %{^fact => value} when is_boolean(value) and value != value_in_this_scenario ->
+            fact
+
+          _ ->
+            false
+        end
+    end)
   end
 
   @spec add_negations_and_solve(term, term) :: term | no_return()

@@ -28,7 +28,7 @@ defmodule AshPolicyAuthorizer.Check do
     quote do
       @behaviour AshPolicyAuthorizer.Check
 
-      def type(), do: :manual
+      def type, do: :manual
     end
   end
 
@@ -52,7 +52,7 @@ defmodule AshPolicyAuthorizer.Check do
     end
   end
 
-  defmacro unimport_checks() do
+  defmacro unimport_checks do
     quote do
       import AshPolicyAuthorizer.Check.Static, only: []
       import AshPolicyAuthorizer.Check.RelatedToUserVia, only: []

@@ -3,10 +3,6 @@ defmodule AshPolicyAuthorizer do
   Authorization in Ash is done via declaring `rules` for actions,
   and in the case of stateful actions, via declaring `authoriation_steps` on attributes
   and relationships.
-
-
-  # TODO: consider this coverage metric when building the test framework
-  https://en.wikipedia.org/wiki/Modified_condition/decision_coverage
   """
 
   @callback ash_policies() :: [AshPolicyAuthorizer.Policy.t()]
@@ -37,11 +33,11 @@ defmodule AshPolicyAuthorizer do
 
   def before_compile_hook(_env) do
     quote do
-      def ash_policies() do
+      def ash_policies do
         @ash_policies
       end
 
-      def ash_policy_authorizer_type() do
+      def ash_policy_authorizer_type do
         @ash_policy_authorizer_type
       end
     end

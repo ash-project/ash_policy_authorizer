@@ -1,4 +1,5 @@
 defmodule AshPolicyAuthorizer.SimpleCheck do
+  @moduledoc "A type of check that operates only on request context, never on the data"
   @type options :: Keyword.t()
   @callback match?(Ash.actor(), map(), options) :: boolean
 
@@ -7,7 +8,7 @@ defmodule AshPolicyAuthorizer.SimpleCheck do
       @behaviour AshPolicyAuthorizer.SimpleCheck
       @behaviour AshPolicyAuthorizer.Check
 
-      def type(), do: :simple
+      def type, do: :simple
 
       def strict_check(nil, _, _), do: {:ok, false}
 

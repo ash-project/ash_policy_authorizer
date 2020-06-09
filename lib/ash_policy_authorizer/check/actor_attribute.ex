@@ -1,4 +1,5 @@
 defmodule AshPolicyAuthorizer.Check.ActorAttribute do
+  @moduledoc "This check is true when a field on the actor equals a specific value"
   use AshPolicyAuthorizer.SimpleCheck
 
   @impl true

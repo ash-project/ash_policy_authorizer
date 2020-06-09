@@ -10,8 +10,6 @@ defmodule AshPolicyAuthorizer.Checker do
   authorization rules as they may be deemed unnecessary. As such, authorization
   checks should have no side effects. Ideally, the checks built-in to ash should
   cover the bulk of your needs.
-
-  If you need to write your own checks see #TODO: Link to a guide about writing checks here.
   """
 
   alias AshPolicyAuthorizer.Policy
@@ -67,12 +65,10 @@ defmodule AshPolicyAuthorizer.Checker do
       else
         case Map.fetch(facts, fact) do
           {:ok, value} ->
-            cond do
-              value == requirement ->
-                {:cont, status}
-
-              true ->
-                {:halt, :not_reality}
+            if value == requirement do
+              {:cont, status}
+            else
+              {:halt, :not_reality}
             end
 
           :error ->
