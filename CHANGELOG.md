@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.1.3](https://github.com/ash-project/ash_policy_authorizer/compare/0.1.2...v0.1.3) (2020-06-15)
+
+
+
+
+### Bug Fixes:
+
+* consider nested entities in ash.formatter
+
 ## [v0.1.2](https://github.com/ash-project/ash_policy_authorizer/compare/0.1.1...v0.1.2) (2020-06-15)
 
 
