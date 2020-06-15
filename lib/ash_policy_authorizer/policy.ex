@@ -1,39 +1,36 @@
 defmodule AshPolicyAuthorizer.Policy do
   @moduledoc false
+  # For now we just write to `checks` and move them to `policies`
+  # on build, when we support nested policies we can change that.
   defstruct [
     :condition,
     :policies,
+    :checks,
     :name
   ]
+
+  @doc false
+  def transform(%{checks: checks} = policy) do
+    {:ok, %{policy | checks: [], policies: checks}}
+  end
 
   @type t :: %__MODULE__{}
 
   defmodule Check do
     @moduledoc false
-    defstruct [:check_module, :check_opts, :type]
+    defstruct [:check, :check_module, :check_opts, :type]
+
+    @doc false
+    def transform(%{check: {check_module, opts}} = policy) do
+      {:ok, %{policy | check_module: check_module, check_opts: opts}}
+    end
 
     @type t :: %__MODULE__{}
-
-    def new(type, check_module, check_opts) do
-      %__MODULE__{
-        type: type,
-        check_module: check_module,
-        check_opts: check_opts
-      }
-    end
-  end
-
-  def new(condition, policies, name) do
-    %__MODULE__{
-      name: name,
-      condition: condition,
-      policies: policies
-    }
   end
 
   def solve(authorizer) do
     authorizer.policies
-    |> build_requirements_expression(authorizer.factsts)
+    |> build_requirements_expression(authorizer.facts)
     |> AshPolicyAuthorizer.SatSolver.solve()
   end
 

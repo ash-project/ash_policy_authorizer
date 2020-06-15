@@ -50,7 +50,7 @@ defmodule AshPolicyAuthorizer.MixProject do
     [
       {:git_ops, "~> 2.0.0", only: :dev},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
-      {:ash, github: "ash-project/ash", ref: "0092af6a94dffe6480d345389c313d5b14dbfc39"},
+      {:ash, "~> 0.5.1"},
       {:ex_check, "~> 0.11.0", only: :dev},
       {:credo, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
@@ -62,7 +62,8 @@ defmodule AshPolicyAuthorizer.MixProject do
   defp aliases do
     [
       sobelow: "sobelow --skip",
-      credo: "credo --strict"
+      credo: "credo --strict",
+      "ash.formatter": "ash.formatter --extensions AshPolicyAuthorizer.Authorizer"
     ]
   end
 end

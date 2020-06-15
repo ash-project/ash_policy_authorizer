@@ -1,45 +1,18 @@
 defmodule AshPolicyAuthorizer do
   @moduledoc """
-  Authorization in Ash is done via declaring `rules` for actions,
-  and in the case of stateful actions, via declaring `authoriation_steps` on attributes
-  and relationships.
+  Documentation forthcoming.
   """
-
-  @callback ash_policies() :: [AshPolicyAuthorizer.Policy.t()]
-  @callback ash_policy_authorizer_type() :: :strict | :filter | :runtime
-
   @type request :: Ash.Engine.Request.t()
   @type side_load :: {:side_load, Keyword.t()}
   @type prepare_instruction :: side_load
 
-  defmacro __using__(_) do
-    quote do
-      import AshPolicyAuthorizer.Dsl, only: [policies: 1, policies: 2]
-      Module.register_attribute(__MODULE__, :ash_policies, accumulate: true)
-      @extensions AshPolicyAuthorizer
-      @authorizers AshPolicyAuthorizer.Authorizer
-      @behaviour AshPolicyAuthorizer
-      require AshPolicyAuthorizer
-    end
-  end
+  alias Ash.Dsl.Extension
 
   def policies(resource) do
-    resource.ash_policies()
+    Extension.get_entities(resource, [:policies])
   end
 
   def access_type(resource) do
-    resource.ash_policy_authorizer_type()
-  end
-
-  def before_compile_hook(_env) do
-    quote do
-      def ash_policies do
-        @ash_policies
-      end
-
-      def ash_policy_authorizer_type do
-        @ash_policy_authorizer_type
-      end
-    end
+    Extension.get_opt(resource, [:policies], :access_type)
   end
 end

@@ -24,7 +24,220 @@ defmodule AshPolicyAuthorizer.Authorizer do
   alias Ash.Actions.PrimaryKeyHelpers
   alias AshPolicyAuthorizer.Checker
 
-  @behaviour Ash.Engine.Authorizer
+  @check_schema [
+    check: [
+      type: {:custom, __MODULE__, :validate_check, []},
+      required: true,
+      doc: """
+      A check is a tuple of `{module, keyword}`.
+
+      The module must implement the `AshPolicyAuthorizer.Check` behaviour.
+      Generally, you won't be passing `{module, opts}`, but will use one
+      of the provided functions that return that, like `always()` or
+      `user_attribute_matches_record(:foo, :bar)`. To make custom ones
+      define a module that implements the `AshPolicyAuthorizer.Check` behaviour,
+      put a convenience function in that module that returns {module, opts}, and
+      import that into your resource.
+
+      ```elixir
+      defmodule MyResource do
+        use Ash.Resource, authorizers: [AshPolicyAuthorizer.Authorizer]
+
+        import MyCustomCheck
+
+        policies do
+          ...
+          policy do
+            authorize_if my_custom_check(:foo)
+          end
+        end
+      end
+      ```
+      """
+    ],
+    name: [
+      type: :string,
+      required: false,
+      doc: "A short name or description for the check, used when explaining authorization results"
+    ]
+  ]
+
+  @authorize_if %Ash.Dsl.Entity{
+    name: :authorize_if,
+    describe: "If the check is true, the request is authorized, otherwise run remaining checks.",
+    args: [:check],
+    schema: @check_schema,
+    examples: [
+      "authorize_if logged_in()",
+      "authorize_if actor_attribute_matches_record(:group, :group)"
+    ],
+    target: AshPolicyAuthorizer.Policy.Check,
+    transform: {AshPolicyAuthorizer.Policy.Check, :transform, []},
+    auto_set_fields: [
+      type: :authorize_if
+    ]
+  }
+
+  @forbid_if %Ash.Dsl.Entity{
+    name: :forbid_if,
+    describe: "If the check is true, the request is forbidden, otherwise run remaining checks.",
+    args: [:check],
+    schema: @check_schema,
+    target: AshPolicyAuthorizer.Policy.Check,
+    transform: {AshPolicyAuthorizer.Policy.Check, :transform, []},
+    examples: [
+      "forbid_if not_logged_in()",
+      "forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)"
+    ],
+    auto_set_fields: [
+      type: :forbid_if
+    ]
+  }
+
+  @authorize_unless %Ash.Dsl.Entity{
+    name: :authorize_unless,
+    describe: "If the check is false, the request is authorized, otherwise run remaining checks.",
+    args: [:check],
+    schema: @check_schema,
+    target: AshPolicyAuthorizer.Policy.Check,
+    transform: {AshPolicyAuthorizer.Policy.Check, :transform, []},
+    examples: [
+      "authorize_unless not_logged_in()",
+      "authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)"
+    ],
+    auto_set_fields: [
+      type: :authorize_unless
+    ]
+  }
+
+  @forbid_unless %Ash.Dsl.Entity{
+    name: :forbid_unless,
+    describe: "If the check is true, the request is forbidden, otherwise run remaining checks.",
+    args: [:check],
+    schema: @check_schema,
+    target: AshPolicyAuthorizer.Policy.Check,
+    transform: {AshPolicyAuthorizer.Policy.Check, :transform, []},
+    examples: [
+      "forbid_unless logged_in()",
+      "forbid_unless actor_attribute_matches_record(:group, :group)"
+    ],
+    auto_set_fields: [
+      type: :forbid_unless
+    ]
+  }
+
+  @policy %Ash.Dsl.Entity{
+    name: :policy,
+    describe: """
+    A policy has a name, a condition, and a list of checks.
+
+    Checks apply logically in the order they are specified, from top to bottom.
+    If no check explicitly authorizes the request, then the request is forbidden.
+    This means that, if you want to "blacklist" instead of "whitelist", you likely
+    want to add an `authorize_if always()` at the bottom of your policy, like so:
+
+    ```elixir
+    policy do
+      forbid_if not_logged_in()
+      forbid_if user_is_blacklisted()
+      forbid_if user_is_in_blacklisted_group()
+
+      authorize_if always()
+    end
+    ```
+    """,
+    schema: [
+      name: [
+        type: :string,
+        required: true,
+        doc:
+          "A short name or description for the policy, used when explaining authorization results"
+      ],
+      condition: [
+        type: {:custom, __MODULE__, :validate_condition, []},
+        doc: """
+        A check that must be true in order for this policy to apply.
+
+        If the policy does not apply, it is not run, and some other policy
+        will need to authorize the request. If no policies apply, the request
+        is forbidden. If multiple policies apply, they must each authorize the
+        request.
+        """
+      ]
+    ],
+    target: AshPolicyAuthorizer.Policy,
+    transform: {AshPolicyAuthorizer.Policy, :transform, []},
+    entities: [
+      checks: [
+        @authorize_if,
+        @forbid_if,
+        @authorize_unless,
+        @forbid_unless
+      ]
+    ]
+  }
+
+  @policies %Ash.Dsl.Section{
+    name: :policies,
+    describe: """
+    A section for declaring authorization policies.
+
+    Each policy that applies must pass independently in order for the
+    request to be authorized.
+    """,
+    entities: [
+      @policy
+    ],
+    imports: [
+      AshPolicyAuthorizer.Check.BuiltInChecks
+    ],
+    schema: [
+      access_type: [
+        type: {:one_of, [:strict, :filter, :runtime]},
+        default: :strict,
+        doc: """
+        There are three choices for access_type:
+
+        * `:filter` - this is probably what you want. Automatically removes unauthorized data by altering the request filter.
+        * `:strict` - authentication uses *only* the request context, failing when unknown.
+        * `:runtime` - authentication tries to verify strict, but if it cannot, it fetches the records and checks authorization.
+        """
+      ]
+    ]
+  }
+
+  use Ash.Dsl.Extension, sections: [@policies]
+
+  @behaviour Ash.Authorizer
+
+  @doc false
+  def validate_check({module, opts}) do
+    if Ash.implements_behaviour?(module, AshPolicyAuthorizer.Check) do
+      {:ok, {module, opts}}
+    else
+      {:error, "#{inspect({module, opts})} is not a valid check"}
+    end
+  end
+
+  def validate_check(other) do
+    {:error, "#{inspect(other)} is not a valid check"}
+  end
+
+  def validate_condition({module, opts}) do
+    if Ash.implements_behaviour?(module, AshPolicyAuthorizer.Check) do
+      if module.type == :simple do
+        {:ok, {module, opts}}
+      else
+        {:error, "Only simple checks can be used as policy conditions"}
+      end
+    else
+      {:error, "#{inspect({module, opts})} is not a valid check"}
+    end
+  end
+
+  def validate_condition(other) do
+    {:error, "#{inspect(other)} is not a valid check"}
+  end
 
   @impl true
   def initial_state(actor, resource, action, verbose?) do
@@ -119,20 +332,21 @@ defmodule AshPolicyAuthorizer.Authorizer do
   defp strict_filters(filterable, authorizer) do
     filterable
     |> Enum.reduce([], fn scenario, or_filters ->
-      and_filter =
-        scenario
-        |> Enum.filter(fn {check_module, _} ->
-          check_module.type() == :filter
-        end)
-        |> Enum.map(fn
-          {{check_module, check_opts}, true} ->
-            check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+      scenario
+      |> Enum.filter(fn {{check_module, _check_opts}, _} ->
+        check_module.type() == :filter
+      end)
+      |> Enum.map(fn
+        {{check_module, check_opts}, true} ->
+          check_module.auto_filter(authorizer.actor, authorizer, check_opts)
 
-          {{check_module, check_opts}, false} ->
-            [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
-        end)
-
-      [and_filter | or_filters]
+        {{check_module, check_opts}, false} ->
+          [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
+      end)
+      |> case do
+        [] -> or_filters
+        filter -> [[and: filter] | or_filters]
+      end
     end)
   end
 
