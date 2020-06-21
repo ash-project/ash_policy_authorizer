@@ -194,7 +194,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
     schema: [
       access_type: [
         type: {:one_of, [:strict, :filter, :runtime]},
-        default: :strict,
+        default: :filter,
         doc: """
         There are three choices for access_type:
 
@@ -266,18 +266,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
 
   @impl true
   def strict_check(authorizer, context) do
-    access_type =
-      case AshPolicyAuthorizer.access_type(authorizer.resource) do
-        :strict ->
-          if Ash.Filter.primary_key_filter?(context.query.filter) do
-            :runtime
-          else
-            :strict
-          end
-
-        other ->
-          other
-      end
+    access_type = AshPolicyAuthorizer.access_type(authorizer.resource)
 
     %{
       authorizer

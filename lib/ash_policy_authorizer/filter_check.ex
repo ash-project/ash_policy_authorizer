@@ -25,26 +25,26 @@ defmodule AshPolicyAuthorizer.FilterCheck do
       def strict_check(actor, %{query: %{filter: candidate}, resource: resource, api: api}, opts) do
         filter = AshPolicyAuthorizer.FilterCheck.build_filter(filter(opts), actor)
 
-        case Ash.Filter.parse(resource, filter, api) do
-          %{errors: []} = parsed_filter ->
+        case Ash.Filter.parse(api, resource, filter) do
+          {:ok, parsed_filter} ->
             if Ash.Filter.strict_subset_of?(parsed_filter, candidate) do
               {:ok, true}
             else
-              case Ash.Filter.parse(resource, [not: filter], api) do
-                %{errors: []} = negated_filter ->
+              case Ash.Filter.parse(api, resource, not: filter) do
+                {:ok, negated_filter} ->
                   if Ash.Filter.strict_subset_of?(negated_filter, candidate) do
                     {:ok, false}
                   else
                     {:ok, :unknown}
                   end
 
-                %{errors: errors} ->
-                  {:error, errors}
+                {:error, error} ->
+                  {:error, error}
               end
             end
 
-          %{errors: errors} ->
-            {:error, errors}
+          {:error, error} ->
+            {:error, error}
         end
       end
 
