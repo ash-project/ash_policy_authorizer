@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.1.5](https://github.com/ash-project/ash_policy_authorizer/compare/0.1.4...v0.1.5) (2020-06-21)
+
+
+
+
+### Bug Fixes:
+
+* update for new filter logic
+
 ## [v0.1.4](https://github.com/ash-project/ash_policy_authorizer/compare/0.1.3...v0.1.4) (2020-06-15)
 
 New version release due to a CI error
