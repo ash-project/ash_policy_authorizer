@@ -13,6 +13,6 @@ defmodule AshPolicyAuthorizer do
   end
 
   def access_type(resource) do
-    Extension.get_opt(resource, [:policies], :access_type)
+    Extension.get_opt(resource, [:policies], :access_type, :strict, false)
   end
 end
