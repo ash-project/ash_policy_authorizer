@@ -4,7 +4,7 @@ defmodule AshPolicyAuthorizer.Check.ActorAttribute do
 
   @impl true
   def describe(opts) do
-    "user.#{opts[:field]} == #{inspect(opts[:value])}"
+    "actor.#{opts[:field]} == #{inspect(opts[:value])}"
   end
 
   @impl true

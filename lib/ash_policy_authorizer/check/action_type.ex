@@ -8,7 +8,7 @@ defmodule AshPolicyAuthorizer.Check.ActionType do
   end
 
   @impl true
-  def match?(_user, %{action: %{type: type}}, options) do
+  def match?(_actor, %{action: %{type: type}}, options) do
     type == options[:type]
   end
 end

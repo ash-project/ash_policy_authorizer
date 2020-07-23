@@ -8,7 +8,7 @@ defmodule AshPolicyAuthorizer.Check.Static do
   end
 
   @impl true
-  def match?(_user, _request, options) do
+  def match?(_actor, _request, options) do
     options[:result]
   end
 end

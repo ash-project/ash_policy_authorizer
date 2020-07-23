@@ -31,35 +31,4 @@ defmodule AshPolicyAuthorizer.Check do
       def type, do: :manual
     end
   end
-
-  defmacro import_default_checks(opts) do
-    quote do
-      import AshPolicyAuthorizer.Check.Static, only: [always: 0, never: 0]
-      import AshPolicyAuthorizer.Check.RelatedToUserVia, only: [related_to_user_via: 1]
-      import AshPolicyAuthorizer.Check.SettingAttribute, only: [setting_attribute: 2]
-
-      import AshPolicyAuthorizer.Check.UserAttributeMatchesRecord,
-        only: [user_attribute_matches_record: 2]
-
-      import AshPolicyAuthorizer.Check.UserAttribute, only: [user_attribute: 2]
-
-      if unquote(opts[:attributes]) do
-        import AshPolicyAuthorizer.Check.SettingAttribute,
-          only: [setting_attribute: 2, setting_attribute: 1]
-      else
-        import AshPolicyAuthorizer.Check.AttributeEquals, only: [attribute_equals: 2]
-      end
-    end
-  end
-
-  defmacro unimport_checks do
-    quote do
-      import AshPolicyAuthorizer.Check.Static, only: []
-      import AshPolicyAuthorizer.Check.RelatedToUserVia, only: []
-      import AshPolicyAuthorizer.Check.SettingAttribute, only: []
-      import AshPolicyAuthorizer.Check.UserAttributeMatchesRecord, only: []
-      import AshPolicyAuthorizer.Check.UserAttribute, only: []
-      import AshPolicyAuthorizer.Check.SettingAttribute, only: []
-    end
-  end
 end

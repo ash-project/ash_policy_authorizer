@@ -1,6 +1,11 @@
 defmodule AshPolicyAuthorizer.Check.BuiltInChecks do
   @moduledoc "The global authorization checks built into ash"
 
+  def relates_to_actor_via(relationship_path) do
+    {AshPolicyAuthorizer.Check.RelatesToActorVia,
+     [relationship_path: List.wrap(relationship_path)]}
+  end
+
   def always do
     {AshPolicyAuthorizer.Check.Static, [result: true]}
   end

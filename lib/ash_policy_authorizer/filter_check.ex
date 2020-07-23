@@ -3,7 +3,10 @@ defmodule AshPolicyAuthorizer.FilterCheck do
   A type of check that is represented by a filter statement
 
   That filter statement can be templated, currently only supporting `{:_actor, field}`
-  which will replace that portion of the filter with the appropriate field value from the actor.
+  which will replace that portion of the filter with the appropriate field value from the actor and
+  `{:_actor, :_primary_key}` which will replace the value with a keyword list of the primary key
+  fields of an actor to their values, like `[id: 1]`. If the actor is not present `{:_actor, field}`
+  becomes `nil`, and `{:_actor, :_primary_key}` becomes `false`.
   """
   @type options :: Keyword.t()
   @callback filter(options()) :: Keyword.t()
@@ -25,12 +28,12 @@ defmodule AshPolicyAuthorizer.FilterCheck do
       def strict_check(actor, %{query: %{filter: candidate}, resource: resource, api: api}, opts) do
         filter = AshPolicyAuthorizer.FilterCheck.build_filter(filter(opts), actor)
 
-        case Ash.Filter.parse(api, resource, filter) do
+        case Ash.Filter.parse(resource, filter) do
           {:ok, parsed_filter} ->
             if Ash.Filter.strict_subset_of?(parsed_filter, candidate) do
               {:ok, true}
             else
-              case Ash.Filter.parse(api, resource, not: filter) do
+              case Ash.Filter.parse(resource, not: filter) do
                 {:ok, negated_filter} ->
                   if Ash.Filter.strict_subset_of?(negated_filter, candidate) do
                     {:ok, false}
@@ -53,7 +56,7 @@ defmodule AshPolicyAuthorizer.FilterCheck do
       end
 
       def check(actor, data, authorizer, opts) do
-        pkey = Ash.primary_key(authorizer.resource)
+        pkey = Ash.Resource.primary_key(authorizer.resource)
 
         filter =
           case data do
@@ -87,8 +90,15 @@ defmodule AshPolicyAuthorizer.FilterCheck do
 
   def build_filter(filter, actor) do
     walk_filter(filter, fn
+      {:_actor, :_primary_key} ->
+        if actor do
+          Map.take(actor, Ash.Resource.primary_key(actor.__struct__))
+        else
+          false
+        end
+
       {:_actor, field} ->
-        Map.get(actor, field)
+        Map.get(actor || %{}, field)
 
       other ->
         other

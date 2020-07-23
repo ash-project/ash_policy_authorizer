@@ -21,7 +21,6 @@ defmodule AshPolicyAuthorizer.Authorizer do
 
   @type t :: %__MODULE__{}
 
-  alias Ash.Actions.PrimaryKeyHelpers
   alias AshPolicyAuthorizer.Checker
 
   @check_schema [
@@ -34,7 +33,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
       The module must implement the `AshPolicyAuthorizer.Check` behaviour.
       Generally, you won't be passing `{module, opts}`, but will use one
       of the provided functions that return that, like `always()` or
-      `user_attribute_matches_record(:foo, :bar)`. To make custom ones
+      `actor_attribute_matches_record(:foo, :bar)`. To make custom ones
       define a module that implements the `AshPolicyAuthorizer.Check` behaviour,
       put a convenience function in that module that returns {module, opts}, and
       import that into your resource.
@@ -458,7 +457,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
   defp scenario_applies_to_record?(authorizer, clause, record) do
     case Map.fetch(authorizer.data_facts, clause) do
       {:ok, ids_that_match} ->
-        pkey = Map.take(record, Ash.primary_key(authorizer.resource))
+        pkey = Map.take(record, Ash.Resource.primary_key(authorizer.resource))
 
         MapSet.member?(ids_that_match, pkey)
 
@@ -482,7 +481,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
   defp scenario_impossible_by_data?(authorizer, clause, record) do
     case Map.fetch(authorizer.data_facts, clause) do
       {:ok, ids_that_match} ->
-        pkey = Map.take(record, Ash.primary_key(authorizer.resource))
+        pkey = Map.take(record, Ash.Resource.primary_key(authorizer.resource))
 
         not MapSet.member?(ids_that_match, pkey)
 
@@ -521,7 +520,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
       authorized_records =
         check_module.check(authorizer.actor, authorizer.data, authorizer, check_opts)
 
-      pkey = Ash.primary_key(authorizer.resource)
+      pkey = Ash.Resource.primary_key(authorizer.resource)
 
       pkeys = MapSet.new(authorized_records, &Map.take(&1, pkey))
 
@@ -602,10 +601,14 @@ defmodule AshPolicyAuthorizer.Authorizer do
   end
 
   defp primary_keys_to_filter(resource, records) do
-    case PrimaryKeyHelpers.values_to_primary_key_filters(
-           resource,
-           records
-         ) do
+    pkey = Ash.Resource.primary_key(resource)
+
+    Enum.map(records, fn record ->
+      record
+      |> Map.take(pkey)
+      |> Enum.to_list()
+    end)
+    |> case do
       [single] -> single
       pkey_filters -> [or: pkey_filters]
     end

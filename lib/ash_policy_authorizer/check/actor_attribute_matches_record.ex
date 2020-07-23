@@ -8,7 +8,7 @@ defmodule AshPolicyAuthorizer.Check.ActorAttributeMatchesRecord do
 
   @impl true
   def describe(opts) do
-    "user.#{opts[:actor_field]} == this_record.#{opts[:record_field]}"
+    "actor.#{opts[:actor_field]} == this_record.#{opts[:record_field]}"
   end
 
   @impl true

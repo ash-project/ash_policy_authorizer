@@ -8,7 +8,7 @@ defmodule AshPolicyAuthorizer.Check.Action do
   end
 
   @impl true
-  def match?(_user, %{action: %{name: name}}, options) do
+  def match?(_actor, %{action: %{name: name}}, options) do
     name == options[:action]
   end
 end
