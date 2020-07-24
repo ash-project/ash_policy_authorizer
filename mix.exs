@@ -48,7 +48,7 @@ defmodule AshPolicyAuthorizer.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:git_ops, "~> 2.0.0", only: :dev},
+      {:git_ops, "~> 2.0.1", only: :dev},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
       {:ash, "~> 1.5"},
       {:ex_check, "~> 0.11.0", only: :dev},
