@@ -22,7 +22,7 @@ defmodule AshPolicyAuthorizer.Check.BuiltInChecks do
   end
 
   def attribute(attribute, filter) do
-    {AshPolicyAuthorizer.Check.Attribute, filter: filter}
+    {AshPolicyAuthorizer.Check.Attribute, attribute: attribute, filter: filter}
   end
 
   def actor_matches(func) do
