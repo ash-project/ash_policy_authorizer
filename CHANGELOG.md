@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.8.0](https://github.com/ash-project/ash_policy_authorizer/compare/v0.7.0...v0.8.0) (2020-08-17)
+
+
+
+
+### Features:
+
+* refactor built in checks for flexibility
+
+* multiple conditions per check
+
 ## [v0.7.0](https://github.com/ash-project/ash_policy_authorizer/compare/v0.6.0...v0.7.0) (2020-08-10)
 
 
