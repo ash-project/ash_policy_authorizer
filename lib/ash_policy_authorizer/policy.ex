@@ -9,11 +9,6 @@ defmodule AshPolicyAuthorizer.Policy do
     :name
   ]
 
-  @doc false
-  def transform(%{checks: checks} = policy) do
-    {:ok, %{policy | checks: [], policies: checks}}
-  end
-
   @type t :: %__MODULE__{}
 
   defmodule Check do
@@ -55,6 +50,39 @@ defmodule AshPolicyAuthorizer.Policy do
     Map.fetch(facts, {mod, opts})
   end
 
+  defp condition_expression(condition, facts) do
+    condition
+    |> List.wrap()
+    |> Enum.reduce(nil, fn
+      condition, nil ->
+        case fetch_fact(facts, condition) do
+          {:ok, true} ->
+            true
+
+          {:ok, false} ->
+            false
+
+          _ ->
+            condition
+        end
+
+      _condition, false ->
+        false
+
+      condition, expression ->
+        case fetch_fact(facts, condition) do
+          {:ok, true} ->
+            expression
+
+          {:ok, false} ->
+            false
+
+          _ ->
+            {:and, condition, expression}
+        end
+    end)
+  end
+
   defp compile_policy_expression(policies, facts)
 
   defp compile_policy_expression([], _facts) do
@@ -65,10 +93,21 @@ defmodule AshPolicyAuthorizer.Policy do
          [%__MODULE__{condition: condition, policies: policies}],
          facts
        ) do
-    if is_nil(condition) or match?({:ok, true}, fetch_fact(facts, condition)) do
-      compile_policy_expression(policies, facts)
-    else
-      true
+    compiled_policies = compile_policy_expression(policies, facts)
+    condition_expression = condition_expression(condition, facts)
+
+    case condition_expression do
+      true ->
+        compiled_policies
+
+      false ->
+        true
+
+      nil ->
+        compiled_policies
+
+      condition_expression ->
+        {:or, {:and, condition_expression, compiled_policies}, {:not, condition_expression}}
     end
   end
 
@@ -78,10 +117,22 @@ defmodule AshPolicyAuthorizer.Policy do
          ],
          facts
        ) do
-    if is_nil(condition) or match?({:ok, true}, fetch_fact(facts, condition)) do
-      {:and, compile_policy_expression(policies, facts), compile_policy_expression(rest, facts)}
-    else
-      compile_policy_expression(rest, facts)
+    condition_expression = condition_expression(condition, facts)
+
+    case condition_expression do
+      true ->
+        {:and, compile_policy_expression(policies, facts), compile_policy_expression(rest, facts)}
+
+      false ->
+        compile_policy_expression(rest, facts)
+
+      nil ->
+        {:and, compile_policy_expression(policies, facts), compile_policy_expression(rest, facts)}
+
+      condition_expression ->
+        {:and,
+         {:or, {:and, condition_expression, compile_policy_expression(policies, facts)},
+          {:not, condition_expression}}, compile_policy_expression(rest, facts)}
     end
   end
 

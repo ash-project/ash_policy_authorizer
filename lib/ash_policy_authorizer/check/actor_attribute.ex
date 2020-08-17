@@ -9,7 +9,6 @@ defmodule AshPolicyAuthorizer.Check.ActorAttribute do
 
   @impl true
   def match?(actor, _context, opts) do
-    value = opts[:value]
-    match?({:ok, ^value}, Map.fetch(actor, opts[:field]))
+    opts[:matcher].(actor)
   end
 end

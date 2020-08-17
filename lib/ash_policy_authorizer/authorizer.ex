@@ -136,26 +136,33 @@ defmodule AshPolicyAuthorizer.Authorizer do
     want to add an `authorize_if always()` at the bottom of your policy, like so:
 
     ```elixir
-    policy do
+    policy action_type(:read) do
       forbid_if not_logged_in()
-      forbid_if user_is_blacklisted()
-      forbid_if user_is_in_blacklisted_group()
+      forbid_if user_is_denylisted()
+      forbid_if user_is_in_denylisted_group()
 
       authorize_if always()
+    end
+    ```
+
+    If the policy should always run, use the `always()` check, like so:
+
+    ```elixir
+    policy always() do
+      ...
     end
     ```
     """,
     schema: [
       name: [
         type: :string,
-        required: true,
         doc:
           "A short name or description for the policy, used when explaining authorization results"
       ],
       condition: [
         type: {:custom, __MODULE__, :validate_condition, []},
         doc: """
-        A check that must be true in order for this policy to apply.
+        A check or list of checks that must be true in order for this policy to apply.
 
         If the policy does not apply, it is not run, and some other policy
         will need to authorize the request. If no policies apply, the request
@@ -164,10 +171,10 @@ defmodule AshPolicyAuthorizer.Authorizer do
         """
       ]
     ],
+    args: [:condition],
     target: AshPolicyAuthorizer.Policy,
-    transform: {AshPolicyAuthorizer.Policy, :transform, []},
     entities: [
-      checks: [
+      policies: [
         @authorize_if,
         @forbid_if,
         @authorize_unless,
@@ -222,20 +229,24 @@ defmodule AshPolicyAuthorizer.Authorizer do
     {:error, "#{inspect(other)} is not a valid check"}
   end
 
-  def validate_condition({module, opts}) do
-    if Ash.implements_behaviour?(module, AshPolicyAuthorizer.Check) do
-      if module.type == :simple do
-        {:ok, {module, opts}}
+  def validate_condition(conditions) when is_list(conditions) do
+    Enum.reduce_while(conditions, {:ok, []}, fn condition, {:ok, conditions} ->
+      {condition, opts} =
+        case condition do
+          {condition, opts} -> {condition, opts}
+          condition -> {condition, []}
+        end
+
+      if Ash.implements_behaviour?(condition, AshPolicyAuthorizer.Check) do
+        {:cont, {:ok, [{condition, opts} | conditions]}}
       else
-        {:error, "Only simple checks can be used as policy conditions"}
+        {:halt, {:error, "Expected all conditions to be valid checks"}}
       end
-    else
-      {:error, "#{inspect({module, opts})} is not a valid check"}
-    end
+    end)
   end
 
-  def validate_condition(other) do
-    {:error, "#{inspect(other)} is not a valid check"}
+  def validate_condition(condition) do
+    validate_condition([condition])
   end
 
   @impl true

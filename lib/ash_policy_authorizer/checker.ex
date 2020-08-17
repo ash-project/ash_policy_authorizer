@@ -21,17 +21,15 @@ defmodule AshPolicyAuthorizer.Checker do
 
   defp do_strict_check_facts(%Policy{} = policy, authorizer, facts) do
     facts =
-      case policy.condition do
-        nil ->
+      policy.condition
+      |> List.wrap()
+      |> Enum.reduce(facts, fn {check_module, opts}, facts ->
+        do_strict_check_facts(
+          %Check{check_module: check_module, check_opts: opts},
+          authorizer,
           facts
-
-        {check_module, opts} ->
-          do_strict_check_facts(
-            %Check{check_module: check_module, check_opts: opts},
-            authorizer,
-            facts
-          )
-      end
+        )
+      end)
 
     Enum.reduce(policy.policies, facts, &do_strict_check_facts(&1, authorizer, &2))
   end
