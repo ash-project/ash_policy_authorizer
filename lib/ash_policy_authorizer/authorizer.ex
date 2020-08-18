@@ -352,6 +352,9 @@ defmodule AshPolicyAuthorizer.Authorizer do
       |> Enum.filter(fn {{check_module, _check_opts}, _} ->
         check_module.type() == :filter
       end)
+      |> Enum.reject(fn {{check_module, check_opts}, result} ->
+        match?({:ok, ^result}, Policy.fetch_fact(authorizer.facts, {check_module, check_opts}))
+      end)
       |> Enum.map(fn
         {{check_module, check_opts}, true} ->
           check_module.auto_filter(authorizer.actor, authorizer, check_opts)
