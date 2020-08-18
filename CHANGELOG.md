@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.10.0](https://github.com/ash-project/ash_policy_authorizer/compare/v0.9.0...v0.10.0) (2020-08-18)
+
+
+
+
+### Features:
+
+* update to latest ash
+
+* support logging policies when verbose mode
+
+### Bug Fixes:
+
+* require description on actor_matches fix mod
+
+* don't filter on facts we already know
+
 ## [v0.9.0](https://github.com/ash-project/ash_policy_authorizer/compare/v0.8.1...v0.9.0) (2020-08-18)
 
 
