@@ -21,7 +21,9 @@ defmodule AshPolicyAuthorizer.Authorizer do
 
   @type t :: %__MODULE__{}
 
-  alias AshPolicyAuthorizer.Checker
+  alias AshPolicyAuthorizer.{Checker, Policy}
+
+  require Logger
 
   @check_schema [
     check: [
@@ -308,8 +310,13 @@ defmodule AshPolicyAuthorizer.Authorizer do
 
       {_filters, []} ->
         case filter do
-          [filter] -> {:filter, filter}
-          filters -> {:filter, [or: filters]}
+          [filter] ->
+            log(authorizer, "filtering with: #{inspect(filter)}, authorization complete")
+            {:filter, filter}
+
+          filters ->
+            log(authorizer, "filtering with: #{inspect(or: filter)}, authorization complete")
+            {:filter, [or: filters]}
         end
 
       {_filters, _require_check} ->
@@ -318,10 +325,20 @@ defmodule AshPolicyAuthorizer.Authorizer do
             maybe_forbid_strict(authorizer)
 
           {[single_filter], scenarios_without_global} ->
+            log(
+              authorizer,
+              "filtering with: #{inspect(single_filter)}, continuing authorization process"
+            )
+
             {:filter_and_continue, single_filter,
              %{authorizer | check_scenarios: scenarios_without_global}}
 
           {filters, scenarios_without_global} ->
+            log(
+              authorizer,
+              "filtering with: #{inspect(and: filters)}, continuing authorization process"
+            )
+
             {:filter_and_continue, [and: filters],
              %{authorizer | check_scenarios: scenarios_without_global}}
         end
@@ -351,8 +368,10 @@ defmodule AshPolicyAuthorizer.Authorizer do
 
   defp maybe_forbid_strict(authorizer) do
     if authorizer.access_type == :runtime do
+      log(authorizer, "could not determine authorization filter, checking at runtime")
       {:continue, %{authorizer | check_scenarios: authorizer.scenarios}}
     else
+      log(authorizer, "could not determine authorization filter, not allowed to check at runtime")
       {:error, :forbidden}
     end
   end
@@ -628,11 +647,14 @@ defmodule AshPolicyAuthorizer.Authorizer do
   defp strict_check_result(authorizer) do
     case Checker.strict_check_scenarios(authorizer) do
       {:ok, scenarios} ->
+        report_scenarios(authorizer, scenarios, "Potential Scenarios")
+
         case Checker.find_real_scenarios(scenarios, authorizer.facts) do
           [] ->
             maybe_strict_filter(authorizer, scenarios)
 
-          _real_scenarios ->
+          real_scenarios ->
+            report_scenarios(authorizer, real_scenarios, "Real Scenarios")
             :authorized
         end
 
@@ -648,6 +670,8 @@ defmodule AshPolicyAuthorizer.Authorizer do
 
   defp maybe_strict_filter(authorizer, scenarios) do
     if authorizer.access_type == :strict do
+      log(authorizer, "No real scenarios, forbidden due to strict access type")
+
       {:error,
        AshPolicyAuthorizer.Forbidden.exception(
          verbose?: authorizer.verbose?,
@@ -655,6 +679,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
          scenarios: scenarios
        )}
     else
+      log(authorizer, "No real scenarios, attempting to filter")
       strict_filter(%{authorizer | scenarios: scenarios})
     end
   end
@@ -667,5 +692,28 @@ defmodule AshPolicyAuthorizer.Authorizer do
 
   defp get_policies(authorizer) do
     %{authorizer | policies: AshPolicyAuthorizer.policies(authorizer.resource)}
+  end
+
+  defp report_scenarios(authorizer, scenarios, title) do
+    if authorizer.verbose? do
+      scenario_description =
+        scenarios
+        |> Enum.map(fn scenario ->
+          scenario
+          |> Enum.map(fn {{module, opts}, requirement} ->
+            ["  ", module.describe(opts) <> " => #{requirement}"]
+          end)
+          |> Enum.intersperse("\n")
+        end)
+        |> Enum.intersperse("\n--\n")
+
+      Logger.info([title, "\n", scenario_description])
+    end
+  end
+
+  defp log(authorizer, message) do
+    if authorizer.verbose? do
+      Logger.info(message)
+    end
   end
 end

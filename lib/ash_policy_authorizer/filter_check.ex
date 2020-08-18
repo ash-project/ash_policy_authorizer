@@ -51,6 +51,8 @@ defmodule AshPolicyAuthorizer.FilterCheck do
         end
       end
 
+      def strict_check(_, _, _), do: {:ok, :unknown}
+
       def auto_filter(actor, _auuthorizer, opts) do
         AshPolicyAuthorizer.FilterCheck.build_filter(filter(opts), actor)
       end
