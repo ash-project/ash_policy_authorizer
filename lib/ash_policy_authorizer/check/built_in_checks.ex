@@ -25,8 +25,12 @@ defmodule AshPolicyAuthorizer.Check.BuiltInChecks do
     {AshPolicyAuthorizer.Check.Attribute, attribute: attribute, filter: filter}
   end
 
-  def actor_matches(func) do
-    {AshPolicyAuthorizer.Check.ActorAttribute, matcher: func}
+  def actor_matches(description, func) do
+    {AshPolicyAuthorizer.Check.ActorMatches, matcher: func, description: description}
+  end
+
+  def changing_attributes(opts) do
+    {AshPolicyAuthorizer.Check.ChangingAttributes, opts}
   end
 
   def actor(field), do: {:_actor, field}
