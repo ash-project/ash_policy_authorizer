@@ -23,31 +23,36 @@ defmodule AshPolicyAuthorizer.FilterCheck do
         [:query]
       end
 
-      def strict_check(nil, _, _), do: {:ok, false}
-
       def strict_check(actor, %{query: %{filter: candidate}, resource: resource, api: api}, opts) do
-        filter = AshPolicyAuthorizer.FilterCheck.build_filter(filter(opts), actor)
+        configured_filter = filter(opts)
 
-        case Ash.Filter.parse(resource, filter) do
-          {:ok, parsed_filter} ->
-            if Ash.Filter.strict_subset_of?(parsed_filter, candidate) do
-              {:ok, true}
-            else
-              case Ash.Filter.parse(resource, not: filter) do
-                {:ok, negated_filter} ->
-                  if Ash.Filter.strict_subset_of?(negated_filter, candidate) do
-                    {:ok, false}
-                  else
-                    {:ok, :unknown}
-                  end
+        if is_nil(actor) and
+             AshPolicyAuthorizer.FilterCheck.references_actor?(configured_filter) do
+          {:ok, false}
+        else
+          filter = AshPolicyAuthorizer.FilterCheck.build_filter(configured_filter, actor)
 
-                {:error, error} ->
-                  {:error, error}
+          case Ash.Filter.parse(resource, filter) do
+            {:ok, parsed_filter} ->
+              if Ash.Filter.strict_subset_of?(parsed_filter, candidate) do
+                {:ok, true}
+              else
+                case Ash.Filter.parse(resource, not: filter) do
+                  {:ok, negated_filter} ->
+                    if Ash.Filter.strict_subset_of?(negated_filter, candidate) do
+                      {:ok, false}
+                    else
+                      {:ok, :unknown}
+                    end
+
+                  {:error, error} ->
+                    {:error, error}
+                end
               end
-            end
 
-          {:error, error} ->
-            {:error, error}
+            {:error, error} ->
+              {:error, error}
+          end
         end
       end
 
@@ -106,6 +111,24 @@ defmodule AshPolicyAuthorizer.FilterCheck do
         other
     end)
   end
+
+  def references_actor?({:_actor, _}), do: true
+
+  def references_actor?(filter) when is_list(filter) do
+    Enum.any?(filter, &references_actor?/1)
+  end
+
+  def references_actor?(filter) when is_map(filter) do
+    Enum.any?(fn {key, value} ->
+      references_actor?(key) || references_actor?(value)
+    end)
+  end
+
+  def references_actor?(tuple) when is_tuple(tuple) do
+    Enum.any?(Tuple.to_list(tuple), &references_actor?/1)
+  end
+
+  def references_actor?(_), do: false
 
   defp walk_filter(filter, mapper) when is_list(filter) do
     case mapper.(filter) do

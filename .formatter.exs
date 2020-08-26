@@ -6,6 +6,8 @@ locals_without_parens = [
   authorize_if: 2,
   authorize_unless: 1,
   authorize_unless: 2,
+  bypass?: 1,
+  description: 1,
   forbid_if: 1,
   forbid_if: 2,
   forbid_unless: 1,

@@ -9,10 +9,16 @@ defmodule AshPolicyAuthorizer.SatSolver do
         {:error, :unsatisfiable}
 
       scenarios ->
+        static_checks = [
+          {AshPolicyAuthorizer.Check.Static, [result: true]},
+          {AshPolicyAuthorizer.Check.Static, [result: false]}
+        ]
+
         {:ok,
          scenarios
          |> Enum.uniq()
-         |> remove_irrelevant_clauses()}
+         |> remove_irrelevant_clauses()
+         |> Enum.map(&Map.drop(&1, static_checks))}
     end
   end
 

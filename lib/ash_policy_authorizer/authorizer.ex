@@ -156,10 +156,15 @@ defmodule AshPolicyAuthorizer.Authorizer do
     ```
     """,
     schema: [
-      name: [
+      description: [
         type: :string,
-        doc:
-          "A short name or description for the policy, used when explaining authorization results"
+        doc: "A description for the policy, used when explaining authorization results",
+        required: true
+      ],
+      bypass?: [
+        type: :boolean,
+        doc: "If `true`, and the policy passes, no further policies will be run",
+        default: false
       ],
       condition: [
         type: {:custom, __MODULE__, :validate_condition, []},
@@ -393,8 +398,11 @@ defmodule AshPolicyAuthorizer.Authorizer do
     case global_check_value do
       nil ->
         case filter do
-          [] -> nil
-          filter -> {scenarios, filter}
+          [] ->
+            nil
+
+          filter ->
+            {filter, scenarios}
         end
 
       {{check_module, check_opts}, value} ->
@@ -533,6 +541,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
     |> Enum.reject(&scenario_impossible?(&1, new_authorizer, record))
     |> case do
       [] ->
+        log(authorizer, "Checked all facts, no real scenarios")
         {:halt, {:forbidden, authorizer}}
 
       scenarios ->
@@ -622,13 +631,13 @@ defmodule AshPolicyAuthorizer.Authorizer do
            {check_module, check_opts}
          ) do
       :error ->
-        raise "Assumption failed"
+        {:ok, false}
 
       {:ok, value} ->
         if value == required_value do
           {:ok, nil}
         else
-          {:ok, impossible: true}
+          {:ok, false}
         end
     end
   end
@@ -697,26 +706,29 @@ defmodule AshPolicyAuthorizer.Authorizer do
     %{authorizer | policies: AshPolicyAuthorizer.policies(authorizer.resource)}
   end
 
-  defp report_scenarios(authorizer, scenarios, title) do
-    if authorizer.verbose? do
-      scenario_description =
-        scenarios
-        |> Enum.map(fn scenario ->
-          scenario
-          |> Enum.map(fn {{module, opts}, requirement} ->
-            ["  ", module.describe(opts) <> " => #{requirement}"]
-          end)
-          |> Enum.intersperse("\n")
+  defp report_scenarios(%{verbose?: true}, scenarios, title) do
+    scenario_description =
+      scenarios
+      |> Enum.map(fn scenario ->
+        scenario
+        |> Enum.reject(fn {{module, _}, _} ->
+          module == AshPolicyAuthorizer.Check.Static
         end)
-        |> Enum.intersperse("\n--\n")
+        |> Enum.map(fn {{module, opts}, requirement} ->
+          ["  ", module.describe(opts) <> " => #{requirement}"]
+        end)
+        |> Enum.intersperse("\n")
+      end)
+      |> Enum.intersperse("\n--\n")
 
-      Logger.info([title, "\n", scenario_description])
-    end
+    Logger.info([title, "\n", scenario_description])
   end
 
-  defp log(authorizer, message) do
-    if authorizer.verbose? do
-      Logger.info(message)
-    end
+  defp report_scenarios(_, _, _), do: :ok
+
+  defp log(%{verbose?: true}, message) do
+    Logger.info(message)
   end
+
+  defp log(_, _), do: :ok
 end

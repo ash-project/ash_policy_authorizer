@@ -5,8 +5,9 @@ defmodule AshPolicyAuthorizer.Policy do
   defstruct [
     :condition,
     :policies,
+    :bypass?,
     :checks,
-    :name
+    :description
   ]
 
   @type t :: %__MODULE__{}
@@ -113,7 +114,7 @@ defmodule AshPolicyAuthorizer.Policy do
 
   defp compile_policy_expression(
          [
-           %__MODULE__{condition: condition, policies: policies} | rest
+           %__MODULE__{condition: condition, policies: policies, bypass?: bypass?} | rest
          ],
          facts
        ) do
@@ -121,18 +122,35 @@ defmodule AshPolicyAuthorizer.Policy do
 
     case condition_expression do
       true ->
-        {:and, compile_policy_expression(policies, facts), compile_policy_expression(rest, facts)}
+        if bypass? do
+          {:or, compile_policy_expression(policies, facts),
+           compile_policy_expression(rest, facts)}
+        else
+          {:and, compile_policy_expression(policies, facts),
+           compile_policy_expression(rest, facts)}
+        end
 
       false ->
         compile_policy_expression(rest, facts)
 
       nil ->
-        {:and, compile_policy_expression(policies, facts), compile_policy_expression(rest, facts)}
+        if bypass? do
+          {:or, compile_policy_expression(policies, facts),
+           compile_policy_expression(rest, facts)}
+        else
+          {:and, compile_policy_expression(policies, facts),
+           compile_policy_expression(rest, facts)}
+        end
 
       condition_expression ->
-        {:and,
-         {:or, {:and, condition_expression, compile_policy_expression(policies, facts)},
-          {:not, condition_expression}}, compile_policy_expression(rest, facts)}
+        if bypass? do
+          {:or, {:and, condition_expression, compile_policy_expression(policies, facts)},
+           {:and, {:not, condition_expression}, compile_policy_expression(rest, facts)}}
+        else
+          {:and,
+           {:or, {:and, condition_expression, compile_policy_expression(policies, facts)},
+            {:not, condition_expression}}, compile_policy_expression(rest, facts)}
+        end
     end
   end
 

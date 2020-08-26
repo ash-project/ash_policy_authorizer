@@ -42,8 +42,13 @@ defmodule AshPolicyAuthorizer.Checker do
       {:ok, boolean} when is_boolean(boolean) ->
         Map.put(facts, {check_module, opts}, boolean)
 
-      _other ->
+      {:ok, :unknown} ->
         facts
+
+      other ->
+        raise "Invalid return value from strict_check call #{check_module}.strict_check(actor, authorizer, #{
+                inspect(opts)
+              }) -  #{inspect(other)}"
     end
   end
 

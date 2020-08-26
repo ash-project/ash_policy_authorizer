@@ -10,8 +10,6 @@ defmodule AshPolicyAuthorizer.SimpleCheck do
 
       def type, do: :simple
 
-      def strict_check(nil, _, _), do: {:ok, false}
-
       def strict_check(actor, context, opts) do
         {:ok, match?(actor, context, opts)}
       end
