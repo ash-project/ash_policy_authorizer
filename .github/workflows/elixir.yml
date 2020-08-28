@@ -48,7 +48,7 @@ jobs:
   coverage:
     needs: [build]
     runs-on: ubuntu-latest
-    name: Release
+    name: Report Test Coverage
     strategy:
       matrix:
         otp: ["23"]
