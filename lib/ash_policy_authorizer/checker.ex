@@ -61,22 +61,16 @@ defmodule AshPolicyAuthorizer.Checker do
   defp scenario_is_reality(scenario, facts) do
     scenario
     |> Map.drop([true, false])
-    |> Enum.reduce_while(:reality, fn {{check_module, opts} = fact, requirement}, status ->
-      if Keyword.has_key?(opts, :__auto_filter__) and
-           AshPolicyAuthorizer.Check.defines_check?(check_module) do
-        {:cont, status}
-      else
-        case Map.fetch(facts, fact) do
-          {:ok, value} ->
-            if value == requirement do
-              {:cont, status}
-            else
-              {:halt, :not_reality}
-            end
+    |> Enum.reduce_while(:reality, fn {fact, requirement}, status ->
+      case Map.fetch(facts, fact) do
+        {:ok, ^requirement} ->
+          {:cont, status}
 
-          :error ->
-            {:cont, :maybe}
-        end
+        {:ok, _} ->
+          {:halt, :not_reality}
+
+        :error ->
+          {:cont, :maybe}
       end
     end)
   end
@@ -84,10 +78,25 @@ defmodule AshPolicyAuthorizer.Checker do
   def strict_check_scenarios(authorizer) do
     case AshPolicyAuthorizer.Policy.solve(authorizer) do
       {:ok, scenarios} ->
-        {:ok, scenarios}
+        {:ok, remove_scenarios_with_impossible_facts(scenarios, authorizer)}
 
       {:error, :unsatisfiable} ->
         {:error, :unsatisfiable}
     end
+  end
+
+  defp remove_scenarios_with_impossible_facts(scenarios, authorizer) do
+    # Remove any scenarios with a fact that must be a certain value, but are not, at strict check time
+    # They aren't true, so that scenario isn't possible
+
+    Enum.reject(scenarios, fn scenario ->
+      Enum.any?(scenario, fn {{mod, opts}, required_value} ->
+        opts[:access_type] == :strict &&
+          not match?(
+            {:ok, ^required_value},
+            Policy.fetch_fact(authorizer.facts, {mod, opts})
+          )
+      end)
+    end)
   end
 end

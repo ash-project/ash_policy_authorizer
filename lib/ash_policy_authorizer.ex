@@ -53,10 +53,41 @@ defmodule AshPolicyAuthorizer do
   end
 
   def policies(resource) do
-    Extension.get_entities(resource, [:policies])
+    resource
+    |> Extension.get_entities([:policies])
+    |> set_access_type(default_access_type(resource))
   end
 
-  def access_type(resource) do
-    Extension.get_opt(resource, [:policies], :access_type, :strict, false)
+  def default_access_type(resource) do
+    Extension.get_opt(resource, [:policies], :default_access_type, :strict, false)
   end
+
+  # This should be done at compile time
+  defp set_access_type(policies, default) when is_list(policies) do
+    Enum.map(policies, &set_access_type(&1, default))
+  end
+
+  defp set_access_type(
+         %AshPolicyAuthorizer.Policy{
+           policies: policies,
+           condition: conditions,
+           checks: checks,
+           access_type: access_type
+         } = policy,
+         default
+       ) do
+    %{
+      policy
+      | policies: set_access_type(policies, default),
+        condition: set_access_type(conditions, default),
+        checks: set_access_type(checks, default),
+        access_type: access_type || default
+    }
+  end
+
+  defp set_access_type(%AshPolicyAuthorizer.Policy.Check{check_opts: check_opts} = check, default) do
+    %{check | check_opts: Keyword.update(check_opts, :access_type, default, &(&1 || default))}
+  end
+
+  defp set_access_type(other, _), do: other
 end

@@ -7,6 +7,7 @@ locals_without_parens = [
   authorize_unless: 1,
   authorize_unless: 2,
   bypass?: 1,
+  default_access_type: 1,
   description: 1,
   forbid_if: 1,
   forbid_if: 2,

@@ -7,7 +7,8 @@ defmodule AshPolicyAuthorizer.Policy do
     :policies,
     :bypass?,
     :checks,
-    :description
+    :description,
+    :access_type
   ]
 
   @type t :: %__MODULE__{}
@@ -48,7 +49,7 @@ defmodule AshPolicyAuthorizer.Policy do
   end
 
   def fetch_fact(facts, {mod, opts}) do
-    Map.fetch(facts, {mod, opts})
+    Map.fetch(facts, {mod, Keyword.delete(opts, :access_type)})
   end
 
   defp condition_expression(condition, facts) do

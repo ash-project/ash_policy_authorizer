@@ -13,7 +13,6 @@ defmodule AshPolicyAuthorizer.Authorizer do
     :scenarios,
     :real_scenarios,
     :check_scenarios,
-    :access_type,
     policies: [],
     facts: %{true => true, false => false},
     data_facts: %{}
@@ -166,6 +165,19 @@ defmodule AshPolicyAuthorizer.Authorizer do
         doc: "If `true`, and the policy passes, no further policies will be run",
         default: false
       ],
+      access_type: [
+        type: {:one_of, [:strict, :filter, :runtime]},
+        doc: """
+        There are three choices for access_type:
+
+        * `:strict` - authentication uses *only* the request context, failing when unknown.
+        * `:filter` - this is probably what you want. Automatically removes unauthorized data by altering the request filter.
+        * `:runtime` - tries to add a filter before the query, but if it cannot, it fetches the records and checks authorization.
+
+        Be careful with runtime checks, as they can potentially cause a given scenario to fetch *all* records of a resource, because
+        it can't figure out a common filter between all of the possible scenarios. Use sparingly, if at all.
+        """
+      ],
       condition: [
         type: {:custom, __MODULE__, :validate_condition, []},
         doc: """
@@ -205,15 +217,13 @@ defmodule AshPolicyAuthorizer.Authorizer do
       AshPolicyAuthorizer.Check.BuiltInChecks
     ],
     schema: [
-      access_type: [
+      default_access_type: [
         type: {:one_of, [:strict, :filter, :runtime]},
         default: :filter,
         doc: """
-        There are three choices for access_type:
+        The default access type of policies for this resource.
 
-        * `:filter` - this is probably what you want. Automatically removes unauthorized data by altering the request filter.
-        * `:strict` - authentication uses *only* the request context, failing when unknown.
-        * `:runtime` - authentication tries to verify strict, but if it cannot, it fetches the records and checks authorization.
+        See the access type on individual policies for more information.
         """
       ]
     ]
@@ -283,14 +293,11 @@ defmodule AshPolicyAuthorizer.Authorizer do
 
   @impl true
   def strict_check(authorizer, context) do
-    access_type = AshPolicyAuthorizer.access_type(authorizer.resource)
-
     %{
       authorizer
       | query: context.query,
         changeset: context.changeset,
-        api: context.api,
-        access_type: access_type
+        api: context.api
     }
     |> get_policies()
     |> do_strict_check_facts()
@@ -301,10 +308,17 @@ defmodule AshPolicyAuthorizer.Authorizer do
     {filterable, require_check} =
       authorizer.scenarios
       |> Enum.split_with(fn scenario ->
-        Enum.all?(scenario, fn {{check_module, opts}, _value} ->
-          AshPolicyAuthorizer.Policy.fetch_fact(authorizer.facts, {check_module, opts}) != :error ||
-            check_module.type() == :filter
+        scenario
+        |> Enum.reject(fn {{_check_module, opts}, _} ->
+          opts[:access_type] == :filter
         end)
+        |> Enum.reject(fn {{check_module, opts}, _} ->
+          match?(
+            {:ok, _},
+            AshPolicyAuthorizer.Policy.fetch_fact(authorizer.facts, {check_module, opts})
+          ) || check_module.type() == :filter
+        end)
+        |> Enum.empty?()
       end)
 
     filter = strict_filters(filterable, authorizer)
@@ -354,8 +368,8 @@ defmodule AshPolicyAuthorizer.Authorizer do
     filterable
     |> Enum.reduce([], fn scenario, or_filters ->
       scenario
-      |> Enum.filter(fn {{check_module, _check_opts}, _} ->
-        check_module.type() == :filter
+      |> Enum.filter(fn {{check_module, check_opts}, _} ->
+        check_module.type() == :filter && check_opts[:access_type] in [:filter, :runtime]
       end)
       |> Enum.reject(fn {{check_module, check_opts}, result} ->
         match?({:ok, ^result}, Policy.fetch_fact(authorizer.facts, {check_module, check_opts}))
@@ -375,13 +389,8 @@ defmodule AshPolicyAuthorizer.Authorizer do
   end
 
   defp maybe_forbid_strict(authorizer) do
-    if authorizer.access_type == :runtime do
-      log(authorizer, "could not determine authorization filter, checking at runtime")
-      {:continue, %{authorizer | check_scenarios: authorizer.scenarios}}
-    else
-      log(authorizer, "could not determine authorization filter, not allowed to check at runtime")
-      {:error, :forbidden}
-    end
+    log(authorizer, "could not determine authorization filter, checking at runtime")
+    {:continue, %{authorizer | check_scenarios: authorizer.scenarios}}
   end
 
   defp global_filters(authorizer, scenarios \\ nil, filter \\ []) do
@@ -405,9 +414,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
             {filter, scenarios}
         end
 
-      {{check_module, check_opts}, value} ->
-        required_status = check_opts[:__auto_filter__] && value
-
+      {{check_module, check_opts}, required_status} ->
         additional_filter =
           if required_status do
             check_module.auto_filter(authorizer.actor, authorizer, check_opts)
@@ -425,26 +432,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
     Enum.map(scenarios, &Map.delete(&1, clause))
   end
 
-  defp check_result(%{access_type: :filter} = authorizer) do
-    case authorizer.check_scenarios do
-      [] ->
-        raise "unreachable"
-
-      [scenario] ->
-        case scenario_to_check_filter(scenario, authorizer) do
-          {:ok, filter} ->
-            {:filter, filter}
-
-          {:error, error} ->
-            {:error, error}
-        end
-
-      scenarios ->
-        scenarios_to_filter(scenarios, authorizer)
-    end
-  end
-
-  defp check_result(%{access_type: :runtime} = authorizer) do
+  defp check_result(authorizer) do
     Enum.reduce_while(authorizer.data, {:ok, authorizer}, fn record, {:ok, authorizer} ->
       authorizer.scenarios
       |> Enum.reject(&scenario_impossible?(&1, authorizer, record))
@@ -458,21 +446,6 @@ defmodule AshPolicyAuthorizer.Authorizer do
           |> do_check_result(authorizer, record)
       end
     end)
-  end
-
-  defp scenarios_to_filter(scenarios, authorizer) do
-    result =
-      Enum.reduce_while(scenarios, {:ok, []}, fn scenario, {:ok, filters} ->
-        case scenario_to_check_filter(scenario, authorizer) do
-          {:ok, filter} -> {:cont, {:ok, [filter | filters]}}
-          {:error, error} -> {:halt, {:error, error}}
-        end
-      end)
-
-    case result do
-      {:ok, filters} -> {:filter, [or: filters]}
-      {:error, error} -> {:error, error}
-    end
   end
 
   defp do_check_result(cleaned_scenarios, authorizer, record) do
@@ -585,77 +558,6 @@ defmodule AshPolicyAuthorizer.Authorizer do
     end
   end
 
-  defp scenario_to_check_filter(scenario, authorizer) do
-    filters =
-      Enum.reduce_while(scenario, {:ok, []}, fn {{check_module, check_opts}, required_value},
-                                                {:ok, filters} ->
-        new_filter =
-          case check_module.type() do
-            :simple ->
-              filter_for_simple_check(authorizer, check_module, check_opts, required_value)
-
-            :filter ->
-              {:ok, check_module.auto_filter(authorizer.actor, authorizer, check_opts)}
-
-            :manual ->
-              filter_for_manual_check(authorizer, check_module, check_opts)
-          end
-
-        case new_filter do
-          {:ok, nil} -> {:cont, {:ok, filters}}
-          {:ok, new_filter} -> {:cont, {:ok, [new_filter | filters]}}
-          {:error, error} -> {:halt, {:error, error}}
-        end
-      end)
-
-    case filters do
-      {:ok, [filter]} -> {:ok, filter}
-      {:ok, filters} -> {:ok, [and: filters]}
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  defp filter_for_manual_check(authorizer, check_module, check_opts) do
-    case check_module.check(authorizer.actor, authorizer.data, authorizer, check_opts) do
-      {:ok, true} ->
-        {:ok, nil}
-
-      {:ok, records} ->
-        primary_keys_to_filter(authorizer.resource, records)
-    end
-  end
-
-  defp filter_for_simple_check(authorizer, check_module, check_opts, required_value) do
-    case AshPolicyAuthorizer.Policy.fetch_fact(
-           authorizer.facts,
-           {check_module, check_opts}
-         ) do
-      :error ->
-        {:ok, false}
-
-      {:ok, value} ->
-        if value == required_value do
-          {:ok, nil}
-        else
-          {:ok, false}
-        end
-    end
-  end
-
-  defp primary_keys_to_filter(resource, records) do
-    pkey = Ash.Resource.primary_key(resource)
-
-    Enum.map(records, fn record ->
-      record
-      |> Map.take(pkey)
-      |> Enum.to_list()
-    end)
-    |> case do
-      [single] -> single
-      pkey_filters -> [or: pkey_filters]
-    end
-  end
-
   defp strict_check_result(authorizer) do
     case Checker.strict_check_scenarios(authorizer) do
       {:ok, scenarios} ->
@@ -681,19 +583,8 @@ defmodule AshPolicyAuthorizer.Authorizer do
   end
 
   defp maybe_strict_filter(authorizer, scenarios) do
-    if authorizer.access_type == :strict do
-      log(authorizer, "No real scenarios, forbidden due to strict access type")
-
-      {:error,
-       AshPolicyAuthorizer.Forbidden.exception(
-         verbose?: authorizer.verbose?,
-         facts: authorizer.facts,
-         scenarios: scenarios
-       )}
-    else
-      log(authorizer, "No real scenarios, attempting to filter")
-      strict_filter(%{authorizer | scenarios: scenarios})
-    end
+    log(authorizer, "No real scenarios, attempting to filter")
+    strict_filter(%{authorizer | scenarios: scenarios})
   end
 
   defp do_strict_check_facts(authorizer) do
@@ -703,7 +594,10 @@ defmodule AshPolicyAuthorizer.Authorizer do
   end
 
   defp get_policies(authorizer) do
-    %{authorizer | policies: AshPolicyAuthorizer.policies(authorizer.resource)}
+    %{
+      authorizer
+      | policies: AshPolicyAuthorizer.policies(authorizer.resource)
+    }
   end
 
   defp report_scenarios(%{verbose?: true}, scenarios, title) do
