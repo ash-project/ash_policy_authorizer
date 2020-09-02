@@ -27,10 +27,10 @@ defmodule AshPolicyAuthorizer.FilterCheck do
         configured_filter = filter(opts)
 
         if is_nil(actor) and
-             AshPolicyAuthorizer.FilterCheck.references_actor?(configured_filter) do
+             Ash.Filter.template_references_actor?(configured_filter) do
           {:ok, false}
         else
-          filter = AshPolicyAuthorizer.FilterCheck.build_filter(configured_filter, actor)
+          filter = Ash.Filter.build_filter_from_template(configured_filter, actor)
 
           case Ash.Filter.parse(resource, filter) do
             {:ok, parsed_filter} ->
@@ -59,7 +59,7 @@ defmodule AshPolicyAuthorizer.FilterCheck do
       def strict_check(_, _, _), do: {:ok, :unknown}
 
       def auto_filter(actor, _auuthorizer, opts) do
-        AshPolicyAuthorizer.FilterCheck.build_filter(filter(opts), actor)
+        Ash.Filter.build_filter_from_template(filter(opts), actor)
       end
 
       def check(actor, data, authorizer, opts) do
@@ -94,74 +94,4 @@ defmodule AshPolicyAuthorizer.FilterCheck do
   def is_filter_check?(module) do
     :erlang.function_exported(module, :filter, 1)
   end
-
-  def build_filter(filter, actor) do
-    walk_filter(filter, fn
-      {:_actor, :_primary_key} ->
-        if actor do
-          Map.take(actor, Ash.Resource.primary_key(actor.__struct__))
-        else
-          false
-        end
-
-      {:_actor, field} ->
-        Map.get(actor || %{}, field)
-
-      other ->
-        other
-    end)
-  end
-
-  def references_actor?({:_actor, _}), do: true
-
-  def references_actor?(filter) when is_list(filter) do
-    Enum.any?(filter, &references_actor?/1)
-  end
-
-  def references_actor?(filter) when is_map(filter) do
-    Enum.any?(fn {key, value} ->
-      references_actor?(key) || references_actor?(value)
-    end)
-  end
-
-  def references_actor?(tuple) when is_tuple(tuple) do
-    Enum.any?(Tuple.to_list(tuple), &references_actor?/1)
-  end
-
-  def references_actor?(_), do: false
-
-  defp walk_filter(filter, mapper) when is_list(filter) do
-    case mapper.(filter) do
-      ^filter ->
-        Enum.map(filter, &walk_filter(&1, mapper))
-
-      other ->
-        walk_filter(other, mapper)
-    end
-  end
-
-  defp walk_filter(filter, mapper) when is_map(filter) do
-    case mapper.(filter) do
-      ^filter ->
-        Enum.into(filter, %{}, &walk_filter(&1, mapper))
-
-      other ->
-        walk_filter(other, mapper)
-    end
-  end
-
-  defp walk_filter(tuple, mapper) when is_tuple(tuple) do
-    case mapper.(tuple) do
-      ^tuple ->
-        tuple
-        |> Tuple.to_list()
-        |> Enum.map(&walk_filter(&1, mapper))
-        |> List.to_tuple()
-
-      other ->
-        walk_filter(other, mapper)
-    end
-  end
-
-  defp walk_filter(value, mapper), do: mapper.(value)
 end

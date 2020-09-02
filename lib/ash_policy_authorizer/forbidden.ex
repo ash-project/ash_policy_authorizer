@@ -16,11 +16,11 @@ defmodule AshPolicyAuthorizer.Forbidden do
       if error.verbose? do
         description(error)
       else
-        "forbidden by policy"
+        "forbidden"
       end
     end
 
-    def code(_), do: "ForbiddenByPolicy"
+    def code(_), do: "Forbidden"
 
     def description(%{errors: errors}) when not is_nil(errors) do
       "Forbidden"

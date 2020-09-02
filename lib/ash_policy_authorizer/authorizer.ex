@@ -157,12 +157,12 @@ defmodule AshPolicyAuthorizer.Authorizer do
     schema: [
       description: [
         type: :string,
-        doc: "A description for the policy, used when explaining authorization results",
-        required: true
+        doc: "A description for the policy, used when explaining authorization results"
       ],
       bypass?: [
         type: :boolean,
-        doc: "If `true`, and the policy passes, no further policies will be run",
+        doc:
+          "If `true`, and the policy passes, no further policies will be run. If the policy fails, authorization continues.",
         default: false
       ],
       access_type: [

@@ -109,7 +109,7 @@ defmodule AshPolicyAuthorizer.Policy do
         compiled_policies
 
       condition_expression ->
-        {:or, {:and, condition_expression, compiled_policies}, {:not, condition_expression}}
+        {:and, condition_expression, compiled_policies}
     end
   end
 
@@ -146,11 +146,10 @@ defmodule AshPolicyAuthorizer.Policy do
       condition_expression ->
         if bypass? do
           {:or, {:and, condition_expression, compile_policy_expression(policies, facts)},
-           {:and, {:not, condition_expression}, compile_policy_expression(rest, facts)}}
+           compile_policy_expression(rest, facts)}
         else
-          {:and,
-           {:or, {:and, condition_expression, compile_policy_expression(policies, facts)},
-            {:not, condition_expression}}, compile_policy_expression(rest, facts)}
+          {:or, {:and, condition_expression, compile_policy_expression(policies, facts)},
+           {:and, {:not, condition_expression}, compile_policy_expression(rest, facts)}}
         end
     end
   end
