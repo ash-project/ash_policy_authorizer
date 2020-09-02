@@ -5,6 +5,29 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.12.0](https://github.com/ash-project/ash_policy_authorizer/compare/v0.11.0...v0.12.0) (2020-09-02)
+
+
+
+
+### Features:
+
+* policy level access types (#14)
+
+* add actor_attribute_equals
+
+* add relating_to_actor
+
+* add changing_relationships
+
+* add `bypass?` policies
+
+* support policy specific access types (#12)
+
+### Bug Fixes:
+
+* remove actor_matches
+
 ## [v0.11.0](https://github.com/ash-project/ash_policy_authorizer/compare/v0.10.0...v0.11.0) (2020-08-26)
 
 
