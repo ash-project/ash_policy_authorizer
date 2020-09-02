@@ -159,12 +159,6 @@ defmodule AshPolicyAuthorizer.Authorizer do
         type: :string,
         doc: "A description for the policy, used when explaining authorization results"
       ],
-      bypass?: [
-        type: :boolean,
-        doc:
-          "If `true`, and the policy passes, no further policies will be run. If the policy fails, authorization continues.",
-        default: false
-      ],
       access_type: [
         type: {:one_of, [:strict, :filter, :runtime]},
         doc: """
@@ -202,6 +196,14 @@ defmodule AshPolicyAuthorizer.Authorizer do
     ]
   }
 
+  @bypass %{
+    @policy
+    | name: :bypass,
+      auto_set_fields: [bypass?: true],
+      describe:
+        "A policy that, if passed, will skip all following policies. If failed, authorization moves on to the next policy"
+  }
+
   @policies %Ash.Dsl.Section{
     name: :policies,
     describe: """
@@ -211,7 +213,8 @@ defmodule AshPolicyAuthorizer.Authorizer do
     request to be authorized.
     """,
     entities: [
-      @policy
+      @policy,
+      @bypass
     ],
     imports: [
       AshPolicyAuthorizer.Check.BuiltInChecks
