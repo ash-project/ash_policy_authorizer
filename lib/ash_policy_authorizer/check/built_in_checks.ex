@@ -25,12 +25,24 @@ defmodule AshPolicyAuthorizer.Check.BuiltInChecks do
     {AshPolicyAuthorizer.Check.Attribute, attribute: attribute, filter: filter}
   end
 
-  def actor_matches(description, func) do
-    {AshPolicyAuthorizer.Check.ActorMatches, matcher: func, description: description}
+  def actor_attribute_equals(attribute, value) do
+    {AshPolicyAuthorizer.Check.ActorAttributeEquals, attribute: attribute, value: value}
   end
 
   def changing_attributes(opts) do
     {AshPolicyAuthorizer.Check.ChangingAttributes, opts}
+  end
+
+  def relating_to_actor(relationship) do
+    {AshPolicyAuthorizer.Check.RelatingToActor, relationship: relationship}
+  end
+
+  def changing_relationship(relationship) do
+    changing_relationships(List.wrap(relationship))
+  end
+
+  def changing_relationships(relationships) do
+    {AshPolicyAuthorizer.Check.ChangingRelationships, relationships: relationships}
   end
 
   def actor(field), do: {:_actor, field}
