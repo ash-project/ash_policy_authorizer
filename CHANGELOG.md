@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.13.0](https://github.com/ash-project/ash_policy_authorizer/compare/v0.12.0...v0.13.0) (2020-09-20)
+
+
+
+
+### Features:
+
+* make bypass policies a top level builder
+
 ## [v0.12.0](https://github.com/ash-project/ash_policy_authorizer/compare/v0.11.0...v0.12.0) (2020-09-02)
 
 
