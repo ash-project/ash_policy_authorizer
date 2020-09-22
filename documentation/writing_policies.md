@@ -71,6 +71,20 @@ policies do
 end
 ```
 
+### Access Type
+
+The default access type is `:filter`. In most cases this will be all you need. In the example above, if a user made a request for all instances
+of the resource, it wouldn't actually return a forbidden error. It simply attaches the appropriate filter to fetch data that the user can see.
+If the actor attribute `active` was `false`, then the request _would_ be forbidden (because there is no data for which they can pass this policy). However, if `active` is `true`, the authorizer would attach the following filter to the request:
+
+```elixir
+[or: [public: true], [owner: {:_actor, :_primary_key}]]
+```
+
+To change this behavior, use `access_type :strict`. With `access_type :strict` you will force the request to fail unless a filter was provided to yield the appropriate data. In this case, any filter that is a subset of the authorization filter would work. For example: `[public: true]`, or `[owner: [id: current_user.id]]`.
+
+Additionally, some checks have more expensive components that can't be checked before the request is run. To enable those, use the `access_type :runtime`. This is stil relatively experimental, but this will attempt to run as much of your checks in a strict fashion, and attach as many things as filters as possible, before running the expensive portion of the checks (defined on the check as `c:AshPolicyAuthorizer.Check.check/4`)
+
 ### Custom checks
 
 See `AshPolicyAuthorizer.Check` for more inforamtion on writing custom checks, which you will likely need at some point when the built in checks are insufficient
