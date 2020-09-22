@@ -71,9 +71,6 @@ defmodule AshPolicyAuthorizer.MixProject do
         "documentation/writing_policies.md"
       ],
       groups_for_modules: [
-        authorizer: [
-          AshPolicyAuthorizer.Authorizer
-        ],
         "policy dsl": ~r/AshPolicyAuthorizer.Authorizer/,
         "builtin checks": ~r/AshPolicyAuthorizer.Check\./,
         "custom checks": [
