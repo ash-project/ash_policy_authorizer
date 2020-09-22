@@ -1,5 +1,23 @@
 defmodule AshPolicyAuthorizer.Authorizer do
-  @moduledoc false
+  @moduledoc """
+  An authorization extension for ash resources.
+
+  A resource can be given a set of policies, which are enforced on each call to a resource action.
+
+  For reads, policies can be configured to filter out data that the actor shouldn't see, as opposed to
+  resulting in a forbidden error.
+
+  See the [policy writing guide](writing_policies.md) for practical examples.
+
+  Policies are solved/managed via a boolean satisfiability solver. To read more about boolean satisfiability,
+  see this page: https://en.wikipedia.org/wiki/Boolean_satisfiability_problem. At the end of
+  the day, however, it is not necessary to understand exactly how Ash takes your
+  authorization requirements and determines if a request is allowed. The
+  important thing to understand is that Ash may or may not run any/all of your
+  authorization rules as they may be deemed unnecessary. As such, authorization
+  checks should have no side effects. Ideally, the checks built-in to ash should
+  cover the bulk of your needs.
+  """
 
   defstruct [
     :actor,

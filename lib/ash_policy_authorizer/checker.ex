@@ -1,16 +1,5 @@
 defmodule AshPolicyAuthorizer.Checker do
-  @moduledoc """
-  Determines if a set of authorization requests can be met or not.
-
-  To read more about boolean satisfiability, see this page:
-  https://en.wikipedia.org/wiki/Boolean_satisfiability_problem. At the end of
-  the day, however, it is not necessary to understand exactly how Ash takes your
-  authorization requirements and determines if a request is allowed. The
-  important thing to understand is that Ash may or may not run any/all of your
-  authorization rules as they may be deemed unnecessary. As such, authorization
-  checks should have no side effects. Ideally, the checks built-in to ash should
-  cover the bulk of your needs.
-  """
+  @moduledoc false
 
   alias AshPolicyAuthorizer.Policy
   alias AshPolicyAuthorizer.Policy.Check

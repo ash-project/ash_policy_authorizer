@@ -21,6 +21,7 @@ defmodule AshPolicyAuthorizer.MixProject do
         coveralls: :test,
         "coveralls.github": :test
       ],
+      docs: docs(),
       aliases: aliases(),
       deps: deps(),
       source_url: "https://github.com/ash-project/ash_policy_authorizer",
@@ -56,6 +57,31 @@ defmodule AshPolicyAuthorizer.MixProject do
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:excoveralls, "~> 0.13.0", only: [:dev, :test]},
       {:sobelow, ">= 0.0.0", only: :dev, runtime: false}
+    ]
+  end
+
+  defp docs do
+    # The main page in the docs
+    [
+      main: "AshPolicyAuthorizer",
+      source_ref: "v#{@version}",
+      logo: "logos/small-logo.png",
+      extra_section: "GUIDES",
+      extras: [
+        "documentation/writing_policies.md"
+      ],
+      groups_for_modules: [
+        authorizer: [
+          AshPolicyAuthorizer.Authorizer
+        ],
+        "policy dsl": ~r/AshPolicyAuthorizer.Authorizer/,
+        "builtin checks": ~r/AshPolicyAuthorizer.Check\./,
+        "custom checks": [
+          AshPolicyAuthorizer.Check,
+          AshPolicyAuthorizer.FilterCheck,
+          AshPolicyAuthorizer.SimpleCheck
+        ]
+      ]
     ]
   end
 
