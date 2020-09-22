@@ -1,6 +1,8 @@
 defmodule AshPolicyAuthorizer do
   @moduledoc """
-  Documentation forthcoming.
+  An authorization extension for ash resources.
+
+  For more information, see `AshPolicyAuthorizer.Authorizer`
   """
   @type request :: Ash.Engine.Request.t()
   @type side_load :: {:side_load, Keyword.t()}
