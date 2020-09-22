@@ -283,6 +283,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
     end)
   end
 
+  @doc false
   def validate_condition(condition) do
     validate_condition([condition])
   end

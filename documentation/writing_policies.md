@@ -78,8 +78,10 @@ of the resource, it wouldn't actually return a forbidden error. It simply attach
 If the actor attribute `active` was `false`, then the request _would_ be forbidden (because there is no data for which they can pass this policy). However, if `active` is `true`, the authorizer would attach the following filter to the request:
 
 ```elixir
-[or: [[public: true], [owner: {:_actor, :_primary_key}]]]
+[or: [[public: true], [owner: actor(:_primary_key)]]]
 ```
+
+To understand what `actor(:_primary_key)` means, see the Filter Templates section in `Ash.Filter`
 
 To change this behavior, use `access_type :strict`. With `access_type :strict` you will force the request to fail unless a filter was provided to yield the appropriate data. In this case, any filter that is a subset of the authorization filter would work. For example: `[public: true]`, or `[owner: [id: current_user.id]]`.
 
