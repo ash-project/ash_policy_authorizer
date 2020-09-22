@@ -1,5 +1,5 @@
 defmodule AshPolicyAuthorizer.Check.Static do
-  @moduledoc "This check is true when the provided result is true, and false otherwise"
+  @moduledoc false
   use AshPolicyAuthorizer.SimpleCheck
 
   @impl true

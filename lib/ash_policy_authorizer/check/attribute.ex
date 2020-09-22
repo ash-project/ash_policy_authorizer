@@ -1,5 +1,5 @@
 defmodule AshPolicyAuthorizer.Check.Attribute do
-  @moduledoc "This check is true when a field on the record matches a specific filter"
+  @moduledoc false
 
   use AshPolicyAuthorizer.FilterCheck
 

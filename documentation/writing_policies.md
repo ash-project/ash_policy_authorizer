@@ -17,6 +17,8 @@ depending on the details of the request being authorized.
 
 ## Guide
 
+To see what checks are built-in, see `AshPolicyAuthorizer.Check.BuiltInChecks`
+
 ### The Simplest Policy
 
 Lets start with the simplest policy set:
@@ -36,16 +38,16 @@ Within this policy we have a single check, declared with `authorize_if`. Checks 
 
 There are four check types, all of which do what they sound like they do:
 
-- authorize_if - if the check is true, the policy is authorized.
-- authorize_unless - if the check is false, the policy is authorized.
-- forbid_if - if the check is true, the policy is forbidden.
-- forbid_unless - if the check is false, the policy is forbidden.
+- `authorize_if` - if the check is true, the policy is authorized.
+- `authorize_unless` - if the check is false, the policy is authorized.
+- `forbid_if` - if the check is true, the policy is forbidden.
+- `forbid_unless` - if the check is false, the policy is forbidden.
 
 In each case, if the policy is not authorized or forbidden, the flow moves to the next check.
 
 ### A realistic policy
 
-In this example, we use some of the provided built in checks (see `AshPolicyAuthorizer.Check.BuiltInChecks`).
+In this example, we use some of the provided built in checks.
 
 ```elixir
 policies do
@@ -68,6 +70,10 @@ policies do
   end
 end
 ```
+
+### Custom checks
+
+See `AshPolicyAuthorizer.Check` for more inforamtion on writing custom checks, which you will likely need at some point when the built in checks are insufficient
 
 ### More
 

@@ -1,9 +1,5 @@
 defmodule AshPolicyAuthorizer.Check.RelatesToActorVia do
-  @moduledoc """
-  Simple equality check between a field on the actor and a field
-  on the record
-  """
-
+  @moduledoc false
   use AshPolicyAuthorizer.FilterCheck
 
   @impl true

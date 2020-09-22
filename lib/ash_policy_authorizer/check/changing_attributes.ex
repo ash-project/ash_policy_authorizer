@@ -1,5 +1,5 @@
 defmodule AshPolicyAuthorizer.Check.ChangingAttributes do
-  @moduledoc "This check is true when attribute changes correspond to the provided options."
+  @moduledoc false
   use AshPolicyAuthorizer.SimpleCheck
 
   @impl true

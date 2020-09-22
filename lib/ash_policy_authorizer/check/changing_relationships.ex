@@ -1,5 +1,5 @@
 defmodule AshPolicyAuthorizer.Check.ChangingRelationships do
-  @moduledoc "This check is true when the specified relationship is changing"
+  @moduledoc false
   use AshPolicyAuthorizer.SimpleCheck
 
   @impl true
