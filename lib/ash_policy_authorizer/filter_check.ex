@@ -17,6 +17,8 @@ defmodule AshPolicyAuthorizer.FilterCheck do
       @behaviour AshPolicyAuthorizer.FilterCheck
       @behaviour AshPolicyAuthorizer.Check
 
+      require Ash.Query
+
       def type, do: :filter
 
       def strict_check_context(opts) do
@@ -73,8 +75,8 @@ defmodule AshPolicyAuthorizer.FilterCheck do
 
         authorizer.resource
         |> authorizer.api.query()
-        |> Ash.Query.filter(filter)
-        |> Ash.Query.filter(auto_filter(authorizer.actor, authorizer, opts))
+        |> Ash.Query.filter(^filter)
+        |> Ash.Query.filter(^auto_filter(authorizer.actor, authorizer, opts))
         |> authorizer.api.read()
         |> case do
           {:ok, authorized_data} ->
