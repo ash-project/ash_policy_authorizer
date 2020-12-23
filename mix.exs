@@ -15,11 +15,12 @@ defmodule AshPolicyAuthorizer.MixProject do
       package: package(),
       description: @description,
       elixir: "~> 1.10",
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
         coveralls: :test,
-        "coveralls.github": :test
+        "coveralls.github": :tesxt
       ],
       docs: docs(),
       aliases: aliases(),
@@ -28,6 +29,12 @@ defmodule AshPolicyAuthorizer.MixProject do
       homepage_url: "https://github.com/ash-project/ash_policy_authorizer"
     ]
   end
+
+  defp elixirc_paths(:test) do
+    ["lib", "test/support"]
+  end
+
+  defp elixirc_paths(_), do: ["lib"]
 
   def package do
     [
@@ -51,7 +58,7 @@ defmodule AshPolicyAuthorizer.MixProject do
     [
       {:git_ops, "~> 2.0.1", only: :dev},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
-      {:ash, ash_version("~> 1.16")},
+      {:ash, ash_version("~> 1.25")},
       {:ex_check, "~> 0.12.0", only: :dev},
       {:credo, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
