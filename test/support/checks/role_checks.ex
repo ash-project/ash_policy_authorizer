@@ -50,7 +50,7 @@ defmodule AshPolicyAuthorizer.Test.Checks.RoleChecks do
   end
 
   # Describes the type of check
-  def type(), do: :filter
+  def type, do: :filter
 
   # Returns a filter statement over the data
   def auto_filter(actor, authorizer, []) do
