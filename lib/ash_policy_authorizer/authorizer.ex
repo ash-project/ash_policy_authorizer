@@ -1,24 +1,4 @@
 defmodule AshPolicyAuthorizer.Authorizer do
-  @moduledoc """
-  An authorization extension for ash resources.
-
-  A resource can be given a set of policies, which are enforced on each call to a resource action.
-
-  For reads, policies can be configured to filter out data that the actor shouldn't see, as opposed to
-  resulting in a forbidden error.
-
-  See the [policy writing guide](writing_policies.md) for practical examples.
-
-  Policies are solved/managed via a boolean satisfiability solver. To read more about boolean satisfiability,
-  see this page: https://en.wikipedia.org/wiki/Boolean_satisfiability_problem. At the end of
-  the day, however, it is not necessary to understand exactly how Ash takes your
-  authorization requirements and determines if a request is allowed. The
-  important thing to understand is that Ash may or may not run any/all of your
-  authorization rules as they may be deemed unnecessary. As such, authorization
-  checks should have no side effects. Ideally, the checks built-in to ash should
-  cover the bulk of your needs.
-  """
-
   defstruct [
     :actor,
     :resource,
@@ -230,6 +210,29 @@ defmodule AshPolicyAuthorizer.Authorizer do
     Each policy that applies must pass independently in order for the
     request to be authorized.
     """,
+    examples: [
+      """
+      policies do
+        # Anything you can use in a condition, you can use in a check, and vice-versa
+        # This policy applies if the actor is a super_user
+        # Addtionally, this policy is declared as a `bypass`. That means that this check is allowed to fail without
+        # failing the whole request, and that if this check *passes*, the entire request passes.
+        bypass actor_attribute_equals(:super_user, true) do
+          authorize_if always()
+        end
+
+        # This will likely be a common occurrence. Specifically, policies that apply to all read actions
+        policy action_type(:read) do
+          # unless the actor is an active user, forbid their request
+          forbid_unless actor_attribute_equals(:active, true)
+          # if the record is marked as public, authorize the request
+          authorize_if attribute(:public, true)
+          # if the actor is related to the data via that data's `owner` relationship, authorize the request
+          authorize_if relates_to_actor_via(:owner)
+        end
+      end
+      """
+    ],
     entities: [
       @policy,
       @bypass
@@ -250,7 +253,45 @@ defmodule AshPolicyAuthorizer.Authorizer do
     ]
   }
 
-  use Ash.Dsl.Extension, sections: [@policies]
+  @sections [@policies]
+
+  @moduledoc """
+  An authorization extension for ash resources.
+
+  To add this extension to a resource, add it to the list of `authorizers` like so:
+
+  ```elixir
+  use Ash.Resource,
+    ...,
+    authorizers: [
+      AshPolicyAuthorizer.Authorizer
+    ]
+  ```
+
+  # DSL Documenation
+  ## Table of Contents
+  #{Ash.Dsl.Extension.doc_index(@sections)}
+
+  #{Ash.Dsl.Extension.doc(@sections)}
+
+  A resource can be given a set of policies, which are enforced on each call to a resource action.
+
+  For reads, policies can be configured to filter out data that the actor shouldn't see, as opposed to
+  resulting in a forbidden error.
+
+  See the [policy writing guide](writing_policies.md) for practical examples.
+
+  Policies are solved/managed via a boolean satisfiability solver. To read more about boolean satisfiability,
+  see this page: https://en.wikipedia.org/wiki/Boolean_satisfiability_problem. At the end of
+  the day, however, it is not necessary to understand exactly how Ash takes your
+  authorization requirements and determines if a request is allowed. The
+  important thing to understand is that Ash may or may not run any/all of your
+  authorization rules as they may be deemed unnecessary. As such, authorization
+  checks should have no side effects. Ideally, the checks built-in to ash should
+  cover the bulk of your needs.
+  """
+
+  use Ash.Dsl.Extension, sections: @sections
 
   @behaviour Ash.Authorizer
 

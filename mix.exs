@@ -2,7 +2,7 @@ defmodule AshPolicyAuthorizer.MixProject do
   @moduledoc false
   use Mix.Project
 
-  @version "0.14.0"
+  @version "0.14.1"
 
   @description """
   A policy based authorizer for the Ash Framework
@@ -58,7 +58,7 @@ defmodule AshPolicyAuthorizer.MixProject do
     [
       {:git_ops, "~> 2.0.1", only: :dev},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
-      {:ash, ash_version("~> 1.25")},
+      {:ash, ash_version("~> 1.25.7")},
       {:ex_check, "~> 0.12.0", only: :dev},
       {:credo, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
