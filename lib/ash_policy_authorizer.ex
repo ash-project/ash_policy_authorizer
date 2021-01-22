@@ -5,8 +5,6 @@ defmodule AshPolicyAuthorizer do
   For more information, see `AshPolicyAuthorizer.Authorizer`
   """
   @type request :: Ash.Engine.Request.t()
-  @type side_load :: {:side_load, Keyword.t()}
-  @type prepare_instruction :: side_load
 
   alias Ash.Dsl.Extension
 
