@@ -296,12 +296,12 @@ defmodule AshPolicyAuthorizer.Authorizer do
   @behaviour Ash.Authorizer
 
   @doc false
-  def validate_check({module, opts}) do
-    if Ash.implements_behaviour?(module, AshPolicyAuthorizer.Check) do
-      {:ok, {module, opts}}
-    else
-      {:error, "#{inspect({module, opts})} is not a valid check"}
-    end
+  def validate_check({module, opts}) when is_atom(module) and is_list(opts) do
+    {:ok, {module, opts}}
+  end
+
+  def validate_check(module) when is_atom(module) do
+    validate_check({module, []})
   end
 
   def validate_check(other) do

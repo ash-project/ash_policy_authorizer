@@ -22,7 +22,7 @@ defmodule AshPolicyAuthorizer.FilterCheck do
       def type, do: :filter
 
       def strict_check_context(opts) do
-        [:query]
+        [:query, :changeset]
       end
 
       def strict_check(actor, %{query: %{filter: candidate}, resource: resource, api: api}, opts) do
