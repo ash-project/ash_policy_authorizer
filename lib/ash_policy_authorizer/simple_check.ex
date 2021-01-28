@@ -4,10 +4,11 @@ defmodule AshPolicyAuthorizer.SimpleCheck do
 
   Simply define `c:match?/3`, which gets the actor, request context, and opts, and returns true or false
   """
+  @type authorizer :: AshPolicyAuthorizer.Authorizer.t()
   @type options :: Keyword.t()
 
   @doc "Whether or not the request matches the check"
-  @callback match?(Ash.actor(), map(), options) :: boolean
+  @callback match?(Ash.actor(), authorizer(), options) :: boolean
 
   defmacro __using__(_) do
     quote do
