@@ -364,7 +364,13 @@ defmodule AshPolicyAuthorizer.Authorizer do
     }
     |> get_policies()
     |> do_strict_check_facts()
-    |> strict_check_result()
+    |> case do
+      {:ok, authorizer} ->
+        strict_check_result(authorizer)
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp strict_filter(authorizer) do
@@ -651,9 +657,13 @@ defmodule AshPolicyAuthorizer.Authorizer do
   end
 
   defp do_strict_check_facts(authorizer) do
-    new_facts = Checker.strict_check_facts(authorizer)
+    case Checker.strict_check_facts(authorizer) do
+      {:ok, authorizer, new_facts} ->
+        {:ok, %{authorizer | facts: new_facts}}
 
-    %{authorizer | facts: new_facts}
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp get_policies(authorizer) do

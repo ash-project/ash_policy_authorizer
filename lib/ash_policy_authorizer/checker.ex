@@ -5,22 +5,39 @@ defmodule AshPolicyAuthorizer.Checker do
   alias AshPolicyAuthorizer.Policy.Check
 
   def strict_check_facts(%{policies: policies} = authorizer) do
-    Enum.reduce(policies, authorizer.facts, &do_strict_check_facts(&1, authorizer, &2))
+    Enum.reduce_while(policies, {:ok, authorizer, authorizer.facts}, fn policy,
+                                                                        {:ok, authorizer, facts} ->
+      case do_strict_check_facts(policy, authorizer, facts) do
+        {:ok, authorizer, facts} ->
+          {:cont, {:ok, authorizer, facts}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
   end
 
   defp do_strict_check_facts(%Policy{} = policy, authorizer, facts) do
-    facts =
-      policy.condition
-      |> List.wrap()
-      |> Enum.reduce(facts, fn {check_module, opts}, facts ->
-        do_strict_check_facts(
-          %Check{check_module: check_module, check_opts: opts},
-          authorizer,
-          facts
-        )
-      end)
+    policy.condition
+    |> List.wrap()
+    |> Enum.reduce_while({:ok, authorizer, facts}, fn {check_module, opts},
+                                                      {:ok, authorizer, facts} ->
+      case do_strict_check_facts(
+             %Check{check_module: check_module, check_opts: opts},
+             authorizer,
+             facts
+           ) do
+        {:ok, authorizer, facts} -> {:cont, {:ok, authorizer, facts}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, authorizer, facts} ->
+        strict_check_policies(policy.policies, authorizer, facts)
 
-    Enum.reduce(policy.policies, facts, &do_strict_check_facts(&1, authorizer, &2))
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp do_strict_check_facts(%AshPolicyAuthorizer.Policy.Check{} = check, authorizer, facts) do
@@ -29,16 +46,28 @@ defmodule AshPolicyAuthorizer.Checker do
 
     case check_module.strict_check(authorizer.actor, authorizer, opts) do
       {:ok, boolean} when is_boolean(boolean) ->
-        Map.put(facts, {check_module, opts}, boolean)
+        {:ok, authorizer, Map.put(facts, {check_module, opts}, boolean)}
 
       {:ok, :unknown} ->
-        facts
+        {:ok, authorizer, facts}
+
+      {:error, error} ->
+        {:error, error}
 
       other ->
         raise "Invalid return value from strict_check call #{check_module}.strict_check(actor, authorizer, #{
                 inspect(opts)
               }) -  #{inspect(other)}"
     end
+  end
+
+  defp strict_check_policies(policies, authorizer, facts) do
+    Enum.reduce_while(policies, {:ok, authorizer, facts}, fn policy, {:ok, authorizer, facts} ->
+      case do_strict_check_facts(policy, authorizer, facts) do
+        {:ok, authorizer, facts} -> {:cont, {:ok, authorizer, facts}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
   end
 
   def find_real_scenarios(scenarios, facts) do
