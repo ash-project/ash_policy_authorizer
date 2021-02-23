@@ -1,7 +1,7 @@
 defmodule AshPolicyAuthorizer.Forbidden do
   @moduledoc "Raised when authorization for an action fails"
 
-  use Ash.Error
+  use Ash.Error.Exception
 
   def_ash_error([scenarios: [], facts: %{}, verbose?: false], class: :forbidden)
 

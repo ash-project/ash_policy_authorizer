@@ -12,7 +12,7 @@ defmodule AshPolicyAuthorizer.Check.RelatingToActor do
 
   def match?(actor, %{changeset: %Ash.Changeset{} = changeset}, opts) do
     resource = changeset.resource
-    relationship = Ash.Resource.relationship(resource, opts[:relationship])
+    relationship = Ash.Resource.Info.relationship(resource, opts[:relationship])
 
     if Ash.Changeset.changing_relationship?(changeset, relationship.name) do
       case Map.get(changeset.relationships, relationship.name) do

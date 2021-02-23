@@ -8,7 +8,7 @@ defmodule AshPolicyAuthorizer.SimpleCheck do
   @type options :: Keyword.t()
 
   @doc "Whether or not the request matches the check"
-  @callback match?(Ash.actor(), authorizer(), options) :: boolean
+  @callback match?(struct(), authorizer(), options) :: boolean
 
   defmacro __using__(_) do
     quote do

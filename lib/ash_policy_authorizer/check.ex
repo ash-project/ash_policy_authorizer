@@ -19,13 +19,13 @@ defmodule AshPolicyAuthorizer.Check do
   It should return `{:ok, true}` if it can tell that the request is authorized, and `{:ok, false}` if
   it can tell that it is not. If unsure, it should return `{:ok, :unknown}`
   """
-  @callback strict_check(Ash.actor(), authorizer(), options) :: {:ok, boolean | :unknown}
+  @callback strict_check(struct(), authorizer(), options) :: {:ok, boolean | :unknown}
   @doc """
   An optional callback, that allows the check to work with policies set to `access_type :filter`
 
   Return a keyword list filter that will be applied to the query being made, and will scope the results to match the rule
   """
-  @callback auto_filter(Ash.actor(), authorizer(), options()) :: Keyword.t()
+  @callback auto_filter(struct(), authorizer(), options()) :: Keyword.t()
   @doc """
   An optional callback, hat allows the check to work with policies set to `access_type :runtime`
 
@@ -34,8 +34,8 @@ defmodule AshPolicyAuthorizer.Check do
 
   Can also return `{:error, error}` if something goes wrong
   """
-  @callback check(Ash.actor(), list(Ash.record()), map, options) ::
-              {:ok, list(Ash.record()) | boolean} | {:error, Ash.error()}
+  @callback check(struct(), list(Ash.Resource.record()), map, options) ::
+              {:ok, list(Ash.Resource.record()) | boolean} | {:error, Ash.Error.t()}
   @doc "Describe the check in human readable format, given the options"
   @callback describe(options()) :: String.t()
 

@@ -316,7 +316,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
           condition -> {condition, []}
         end
 
-      if Ash.implements_behaviour?(condition, AshPolicyAuthorizer.Check) do
+      if Ash.Helpers.implements_behaviour?(condition, AshPolicyAuthorizer.Check) do
         {:cont, {:ok, [{condition, opts} | conditions]}}
       else
         {:halt, {:error, "Expected all conditions to be valid checks"}}
@@ -540,7 +540,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
   defp scenario_applies_to_record?(authorizer, clause, record) do
     case Map.fetch(authorizer.data_facts, clause) do
       {:ok, ids_that_match} ->
-        pkey = Map.take(record, Ash.Resource.primary_key(authorizer.resource))
+        pkey = Map.take(record, Ash.Resource.Info.primary_key(authorizer.resource))
 
         MapSet.member?(ids_that_match, pkey)
 
@@ -564,7 +564,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
   defp scenario_impossible_by_data?(authorizer, clause, record) do
     case Map.fetch(authorizer.data_facts, clause) do
       {:ok, ids_that_match} ->
-        pkey = Map.take(record, Ash.Resource.primary_key(authorizer.resource))
+        pkey = Map.take(record, Ash.Resource.Info.primary_key(authorizer.resource))
 
         not MapSet.member?(ids_that_match, pkey)
 
@@ -604,7 +604,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
       authorized_records =
         check_module.check(authorizer.actor, authorizer.data, authorizer, check_opts)
 
-      pkey = Ash.Resource.primary_key(authorizer.resource)
+      pkey = Ash.Resource.Info.primary_key(authorizer.resource)
 
       pkeys = MapSet.new(authorized_records, &Map.take(&1, pkey))
 

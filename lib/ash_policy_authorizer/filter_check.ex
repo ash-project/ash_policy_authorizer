@@ -65,7 +65,7 @@ defmodule AshPolicyAuthorizer.FilterCheck do
       end
 
       def check(actor, data, authorizer, opts) do
-        pkey = Ash.Resource.primary_key(authorizer.resource)
+        pkey = Ash.Resource.Info.primary_key(authorizer.resource)
 
         filter =
           case data do
