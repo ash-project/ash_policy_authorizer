@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.14.6](https://github.com/ash-project/ash_policy_authorizer/compare/v0.14.5...v0.14.6) (2021-02-23)
+
+
+
+
+### Bug Fixes:
+
+* update ash version dependency
+
 ## [v0.14.5](https://github.com/ash-project/ash_policy_authorizer/compare/v0.14.4...v0.14.5) (2021-02-23)
 
 
