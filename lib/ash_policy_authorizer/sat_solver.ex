@@ -18,6 +18,7 @@ defmodule AshPolicyAuthorizer.SatSolver do
          scenarios
          |> Enum.uniq()
          |> remove_irrelevant_clauses()
+         |> Enum.uniq()
          |> Enum.map(&Map.drop(&1, static_checks))}
     end
   end

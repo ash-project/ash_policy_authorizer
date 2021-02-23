@@ -7,10 +7,28 @@ defmodule AshPolicyAuthorizer.FilterCheck do
   `{:_actor, :_primary_key}` which will replace the value with a keyword list of the primary key
   fields of an actor to their values, like `[id: 1]`. If the actor is not present `{:_actor, field}`
   becomes `nil`, and `{:_actor, :_primary_key}` becomes `false`.
+
+  You can customize what the "negative" filter looks like by defining `c:reject/1`. This is important for
+  filters over related data. For example, given an `owner` relationship and a data layer like `ash_postgres`
+  where `column != NULL` does *not* evaluate to true (see postgres docs on NULL for more):
+
+      # The opposite of
+      `owner.id == 1`
+      # in most cases is not
+      `not(owner.id == 1)`
+      # because in postgres that would be `NOT (owner.id = NULL)` in cases where there was no owner
+      # A better opposite would be
+      `owner.id != 1 or is_nil(owner.id)`
+      # alternatively
+      `not(owner.id == 1) or is_nil(owner.id)`
+
+  By being able to customize the `reject` filter, you can use related filters in your policies. Without it,
+  they will likely have undesired effects.
   """
   @type options :: Keyword.t()
   @callback filter(options()) :: Keyword.t()
-  @optional_callbacks [filter: 1]
+  @callback reject(options()) :: Keyword.t()
+  @optional_callbacks [filter: 1, reject: 1]
 
   defmacro __using__(_) do
     quote do
@@ -25,7 +43,12 @@ defmodule AshPolicyAuthorizer.FilterCheck do
         [:query, :changeset]
       end
 
-      def strict_check(actor, %{query: %{filter: candidate}, resource: resource, api: api}, opts) do
+      def strict_check(
+            actor,
+            %{query: %{filter: candidate}, resource: resource, api: api} = context,
+            opts
+          ) do
+        opts = Keyword.put_new(opts, :resource, context.resource)
         configured_filter = filter(opts)
 
         if is_nil(actor) and
@@ -60,8 +83,18 @@ defmodule AshPolicyAuthorizer.FilterCheck do
 
       def strict_check(_, _, _), do: {:ok, :unknown}
 
-      def auto_filter(actor, _auuthorizer, opts) do
+      def auto_filter(actor, authorizer, opts) do
+        opts = Keyword.put_new(opts, :resource, authorizer.resource)
         Ash.Filter.build_filter_from_template(filter(opts), actor)
+      end
+
+      def auto_filter_not(actor, authorizer, opts) do
+        opts = Keyword.put_new(opts, :resource, authorizer.resource)
+        Ash.Filter.build_filter_from_template(reject(opts), actor)
+      end
+
+      def reject(opts) do
+        [not: filter(opts)]
       end
 
       def check(actor, data, authorizer, opts) do
@@ -90,6 +123,8 @@ defmodule AshPolicyAuthorizer.FilterCheck do
             {:error, error}
         end
       end
+
+      defoverridable reject: 1
     end
   end
 

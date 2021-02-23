@@ -10,7 +10,29 @@ defmodule AshPolicyAuthorizer.Check.RelatesToActorVia do
 
   @impl true
   def filter(opts) do
-    put_in_path(opts[:relationship_path], {:_actor, :_primary_key})
+    pkey =
+      opts[:resource]
+      |> Ash.Resource.Info.related(opts[:relationship_path])
+      |> Kernel.||(raise "Must be able to determine related resource for `relates_to_actor_via`")
+      |> Ash.Resource.Info.primary_key()
+
+    put_in_path(opts[:relationship_path], Enum.map(pkey, &{&1, {:_actor, &1}}))
+  end
+
+  @impl true
+  def reject(opts) do
+    pkey =
+      opts[:resource]
+      |> Ash.Resource.Info.related(opts[:relationship_path])
+      |> Kernel.||(raise "Must be able to determine related resource for `relates_to_actor_via`")
+      |> Ash.Resource.Info.primary_key()
+
+    [
+      or: [
+        [not: filter(opts)],
+        [put_in_path(opts[:relationship_path], Enum.map(pkey, &{:is_nil, &1}))]
+      ]
+    ]
   end
 
   defp put_in_path([], value) do

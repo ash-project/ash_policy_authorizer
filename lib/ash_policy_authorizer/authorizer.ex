@@ -448,7 +448,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
           check_module.auto_filter(authorizer.actor, authorizer, check_opts)
 
         {{check_module, check_opts}, false} ->
-          [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
+          check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
       end)
       |> case do
         [] -> or_filters
@@ -488,7 +488,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
           if required_status do
             check_module.auto_filter(authorizer.actor, authorizer, check_opts)
           else
-            [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
+            check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
           end
 
         scenarios = remove_clause(authorizer.scenarios, {check_module, check_opts})
