@@ -20,7 +20,7 @@ defmodule AshPolicyAuthorizer.MixProject do
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
         coveralls: :test,
-        "coveralls.github": :tesxt
+        "coveralls.github": :test
       ],
       docs: docs(),
       aliases: aliases(),
@@ -62,7 +62,7 @@ defmodule AshPolicyAuthorizer.MixProject do
       {:ex_check, "~> 0.12.0", only: :dev},
       {:credo, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
-      {:excoveralls, "~> 0.13.0", only: [:dev, :test]},
+      {:excoveralls, "~> 0.13.4", only: [:dev, :test]},
       {:sobelow, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
