@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.15.0](https://github.com/ash-project/ash_policy_authorizer/compare/v0.14.6...v0.15.0) (2021-02-23)
+
+
+
+
+### Features:
+
+* customize the `reject` of filter checks
+
+### Bug Fixes:
+
+* related_to_actor_via/1 now properly negates
+
 ## [v0.14.6](https://github.com/ash-project/ash_policy_authorizer/compare/v0.14.5...v0.14.6) (2021-02-23)
 
 
