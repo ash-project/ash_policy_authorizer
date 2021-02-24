@@ -35,6 +35,14 @@ defmodule AshPolicyAuthorizerTest do
     assert [%{name: "foo"}] = Api.read!(File, actor: user)
   end
 
+  test "filter checks work on create/update/destroy actions", %{user: user} do
+    user2 = Api.create!(Ash.Changeset.new(User))
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Api.update!(Ash.Changeset.new(user), actor: user2)
+    end
+  end
+
   defp give_role(user, org, role, resource, resource_id) do
     Membership
     |> Ash.Changeset.new(%{role: role, resource: resource, resource_id: resource_id})
