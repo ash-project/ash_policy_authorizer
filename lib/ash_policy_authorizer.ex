@@ -8,6 +8,67 @@ defmodule AshPolicyAuthorizer do
 
   alias Ash.Dsl.Extension
 
+  @doc """
+  A utility to determine if a given query/changeset would pass authorization.
+
+  *This is still experimental.*
+  """
+  def strict_check(_actor, %{action: nil}, _) do
+    raise "Cannot use `strict_check/3` unless an action has been set on the query/changeset"
+  end
+
+  def strict_check(actor, %Ash.Query{} = query, api) do
+    authorizer = %AshPolicyAuthorizer.Authorizer{
+      actor: actor,
+      resource: query.resource,
+      action: query.action
+    }
+
+    case AshPolicyAuthorizer.Authorizer.strict_check(authorizer, %{
+           api: api,
+           query: query,
+           changeset: nil
+         }) do
+      {:error, _error} ->
+        false
+
+      :authorized ->
+        true
+
+      {:filter, _} ->
+        true
+
+      _ ->
+        :maybe
+    end
+  end
+
+  def strict_check(actor, %Ash.Changeset{} = changeset, api) do
+    authorizer = %AshPolicyAuthorizer.Authorizer{
+      actor: actor,
+      resource: changeset.resource,
+      action: changeset.action
+    }
+
+    case AshPolicyAuthorizer.Authorizer.strict_check(authorizer, %{
+           api: api,
+           changeset: changeset,
+           query: nil
+         }) do
+      {:error, _error} ->
+        false
+
+      :authorized ->
+        true
+
+      {:filter, _} ->
+        :maybe
+
+      _ ->
+        :maybe
+    end
+  end
+
   def describe_resource(resource) do
     resource
     |> policies()

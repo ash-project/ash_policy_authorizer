@@ -21,6 +21,11 @@ defmodule AshPolicyAuthorizer.Check.BuiltInChecks do
     {AshPolicyAuthorizer.Check.Action, action: action}
   end
 
+  @doc "This check is true when the field is being selected and false when it is not"
+  def selecting(attribute) do
+    {AshPolicyAuthorizer.Check.Selecting, attribute: attribute}
+  end
+
   @doc " This check passes if the data relates to the actor via the specified relationship or path of relationships"
   def relates_to_actor_via(relationship_path) do
     {AshPolicyAuthorizer.Check.RelatesToActorVia, relationship_path: List.wrap(relationship_path)}

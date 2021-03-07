@@ -234,7 +234,8 @@ defmodule AshPolicyAuthorizer.Policy do
         compile_policy_expression(rest, facts)
 
       :error ->
-        {:and, {:not, clause}, compile_policy_expression(rest, facts)}
+        {:and, {:not, {clause.check_module, clause.check_opts}},
+         compile_policy_expression(rest, facts)}
     end
   end
 
@@ -254,7 +255,7 @@ defmodule AshPolicyAuthorizer.Policy do
         false
 
       :error ->
-        {:and, clause, compile_policy_expression(rest, facts)}
+        {:and, {clause.check_module, clause.check_opts}, compile_policy_expression(rest, facts)}
     end
   end
 end
