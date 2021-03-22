@@ -34,13 +34,14 @@ defmodule AshPolicyAuthorizer.Check.ChangingAttributes do
         else
           case Ash.Changeset.fetch_change(changeset, attribute) do
             {:ok, new_value} ->
-              Enum.all?(opts, fn
-                {:to, value} ->
-                  new_value == value
+              opts == [] ||
+                Enum.all?(opts, fn
+                  {:to, value} ->
+                    new_value == value
 
-                {:from, value} ->
-                  Map.get(changeset.data, attribute) == value
-              end)
+                  {:from, value} ->
+                    Map.get(changeset.data, attribute) == value
+                end)
 
             _ ->
               false

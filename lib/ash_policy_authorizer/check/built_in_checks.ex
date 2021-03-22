@@ -50,7 +50,7 @@ defmodule AshPolicyAuthorizer.Check.BuiltInChecks do
 
   ```elixir
   # if you are changing both first name and last name
-  changing_attributes(:first_name, :last_name)
+  changing_attributes([:first_name, :last_name])
 
   # if you are changing first name to fred
   changing_attributes(first_name: [to: "fred"])
@@ -63,6 +63,13 @@ defmodule AshPolicyAuthorizer.Check.BuiltInChecks do
   ```
   """
   def changing_attributes(opts) do
+    opts =
+      Enum.map(opts, fn opt ->
+        if is_atom(opt) do
+          {opt, []}
+        end
+      end)
+
     {AshPolicyAuthorizer.Check.ChangingAttributes, opts}
   end
 

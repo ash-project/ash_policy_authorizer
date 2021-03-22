@@ -14,23 +14,13 @@ defmodule AshPolicyAuthorizer.Check.RelatingToActor do
     resource = changeset.resource
     relationship = Ash.Resource.Info.relationship(resource, opts[:relationship])
 
-    if Ash.Changeset.changing_relationship?(changeset, relationship.name) do
-      case Map.get(changeset.relationships, relationship.name) do
-        %{replace: replacing} ->
-          Enum.any?(List.wrap(replacing), fn replacing ->
-            Map.fetch(replacing, relationship.destination_field) ==
-              Map.fetch(actor, relationship.destination_field)
-          end)
+    unless relationship.type == :belongs_to do
+      raise "Can only use `belongs_to` relationships in relating_to_actor checks"
+    end
 
-        %{add: adding} ->
-          Enum.any?(List.wrap(adding), fn adding ->
-            Map.fetch(adding, relationship.destination_field) ==
-              Map.fetch(actor, relationship.destination_field)
-          end)
-
-        _ ->
-          false
-      end
+    if Ash.Changeset.changing_attribute?(changeset, relationship.source_field) do
+      Ash.Changeset.get_attribute(changeset, relationship.source_field) ==
+        Map.get(actor, relationship.destination_field)
     else
       false
     end
