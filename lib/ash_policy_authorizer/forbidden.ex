@@ -8,8 +8,8 @@ defmodule AshPolicyAuthorizer.Forbidden do
   defimpl Ash.ErrorKind do
     def id(_), do: Ecto.UUID.generate()
 
-    def message(%{errors: errors}) when not is_nil(errors) do
-      Ash.Error.error_messages(errors)
+    def message(%{errors: errors, stacktraces?: stacktraces?}) when not is_nil(errors) do
+      Ash.Error.error_messages(errors, nil, stacktraces?)
     end
 
     def message(error) do
