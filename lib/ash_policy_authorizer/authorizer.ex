@@ -394,7 +394,7 @@ defmodule AshPolicyAuthorizer.Authorizer do
 
     case {filter, require_check} do
       {[], []} ->
-        raise "unreachable"
+        :authorized
 
       {_filters, []} ->
         case filter do
