@@ -382,11 +382,10 @@ defmodule AshPolicyAuthorizer.Authorizer do
           opts[:access_type] == :filter
         end)
         |> Enum.reject(fn {{check_module, opts}, _} ->
-          opts[:access_type] != :strict &&
-            (match?(
-               {:ok, _},
-               AshPolicyAuthorizer.Policy.fetch_fact(authorizer.facts, {check_module, opts})
-             ) || check_module.type() == :filter)
+          match?(
+            {:ok, _},
+            AshPolicyAuthorizer.Policy.fetch_fact(authorizer.facts, {check_module, opts})
+          ) || check_module.type() == :filter
         end)
         |> Enum.empty?()
       end)
