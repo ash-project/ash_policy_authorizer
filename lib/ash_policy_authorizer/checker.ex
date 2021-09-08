@@ -55,9 +55,7 @@ defmodule AshPolicyAuthorizer.Checker do
         {:error, error}
 
       other ->
-        raise "Invalid return value from strict_check call #{check_module}.strict_check(actor, authorizer, #{
-                inspect(opts)
-              }) -  #{inspect(other)}"
+        raise "Invalid return value from strict_check call #{check_module}.strict_check(actor, authorizer, #{inspect(opts)}) -  #{inspect(other)}"
     end
   end
 
