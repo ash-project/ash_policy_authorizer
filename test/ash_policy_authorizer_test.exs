@@ -44,7 +44,9 @@ defmodule AshPolicyAuthorizerTest do
   end
 
   test "unauthorized if no policy is defined", %{user: user} do
-    assert Api.read!(User, actor: user) == []
+    assert_raise Ash.Error.Forbidden, fn ->
+      Api.read!(User, actor: user) == []
+    end
   end
 
   defp give_role(user, org, role, resource, resource_id) do
