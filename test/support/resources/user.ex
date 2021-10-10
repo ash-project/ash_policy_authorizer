@@ -6,6 +6,8 @@ defmodule AshPolicyAuthorizer.Test.User do
       AshPolicyAuthorizer.Authorizer
     ]
 
+  # if you add a policy matching `read` you will need to update the test that checks
+  # that an action is unathorized if no policy is defined
   policies do
     policy action_type(:update) do
       authorize_if attribute(:id, eq: actor(:id))
