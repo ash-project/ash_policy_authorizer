@@ -43,6 +43,12 @@ defmodule AshPolicyAuthorizerTest do
     end
   end
 
+  test "unauthorized if no policy is defined", %{user: user} do
+    assert_raise Ash.Error.Forbidden, fn ->
+      Api.read!(User, actor: user) == []
+    end
+  end
+
   defp give_role(user, org, role, resource, resource_id) do
     Membership
     |> Ash.Changeset.new(%{role: role, resource: resource, resource_id: resource_id})

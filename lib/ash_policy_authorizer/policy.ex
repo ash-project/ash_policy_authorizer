@@ -32,7 +32,10 @@ defmodule AshPolicyAuthorizer.Policy do
   end
 
   defp build_requirements_expression(policies, facts) do
-    policy_expression = compile_policy_expression(policies, facts)
+    at_least_one_policy_expression = at_least_one_policy_expression(policies, facts)
+
+    policy_expression =
+      {:and, at_least_one_policy_expression, compile_policy_expression(policies, facts)}
 
     facts_expression =
       AshPolicyAuthorizer.SatSolver.facts_to_statement(Map.drop(facts, [true, false]))
@@ -42,6 +45,15 @@ defmodule AshPolicyAuthorizer.Policy do
     else
       policy_expression
     end
+  end
+
+  def at_least_one_policy_expression(policies, facts) do
+    policies
+    |> Enum.map(&condition_expression(&1.condition, facts))
+    |> Enum.filter(& &1)
+    |> Enum.reduce(false, fn condition, acc ->
+      {:or, condition, acc}
+    end)
   end
 
   def fetch_fact(facts, %{check_module: mod, check_opts: opts}) do
