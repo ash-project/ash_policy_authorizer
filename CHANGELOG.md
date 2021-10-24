@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.16.3](https://github.com/ash-project/ash_policy_authorizer/compare/v0.16.2...v0.16.3) (2021-10-24)
+
+
+
+
+### Bug Fixes:
+
+* undo unnecessary change
+
+* honor strict access type when generating filters
+
+### Improvements:
+
+* breaking change, forbid on no applicable condition
+
 ## [v0.16.2](https://github.com/ash-project/ash_policy_authorizer/compare/v0.16.1-rc1...v0.16.2) (2021-07-02)
 
 
