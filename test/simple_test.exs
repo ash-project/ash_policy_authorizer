@@ -3,7 +3,7 @@ defmodule AshPolicyAuthorizer.Test.SimpleTest do
   use ExUnit.Case
   doctest AshPolicyAuthorizer
 
-  alias AshPolicyAuthorizer.Test.Simple.{Api, Post, User}
+  alias AshPolicyAuthorizer.Test.Simple.{Api, Trip, Post, User}
 
   setup do
     [
@@ -21,5 +21,9 @@ defmodule AshPolicyAuthorizer.Test.SimpleTest do
 
   test "filter checks work with related data", %{user: user} do
     assert Api.read!(Post, actor: user) == []
+  end
+
+  test "filter checks work via deeply related data", %{user: user} do
+    assert Api.read!(Trip, actor: user) == []
   end
 end

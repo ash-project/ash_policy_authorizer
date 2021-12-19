@@ -8,5 +8,8 @@ defmodule AshPolicyAuthorizer.Test.Simple.Registry do
     entry(Simple.User)
     entry(Simple.Organization)
     entry(Simple.Post)
+    entry(Simple.Car)
+    entry(Simple.CarUser)
+    entry(Simple.Trip)
   end
 end

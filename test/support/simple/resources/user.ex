@@ -30,5 +30,11 @@ defmodule AshPolicyAuthorizer.Test.Simple.User do
   relationships do
     belongs_to(:organization, AshPolicyAuthorizer.Test.Simple.Organization)
     has_many(:posts, AshPolicyAuthorizer.Test.Simple.Post, destination_field: :author_id)
+
+    many_to_many :cars, AshPolicyAuthorizer.Test.Simple.Car do
+      through(AshPolicyAuthorizer.Test.Simple.CarUser)
+      source_field_on_join_table(:user_id)
+      destination_field_on_join_table(:car_id)
+    end
   end
 end
