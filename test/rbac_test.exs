@@ -1,9 +1,9 @@
-defmodule AshPolicyAuthorizerTest do
+defmodule AshPolicyAuthorizer.Test.RbacTest do
   @doc false
   use ExUnit.Case
   doctest AshPolicyAuthorizer
 
-  alias AshPolicyAuthorizer.Test.{Api, File, Membership, Organization, User}
+  alias AshPolicyAuthorizer.Test.Rbac.{Api, File, Membership, Organization, User}
 
   setup do
     [
@@ -33,14 +33,6 @@ defmodule AshPolicyAuthorizerTest do
     create_file(org, "baz")
 
     assert [%{name: "foo"}] = Api.read!(File, actor: user)
-  end
-
-  test "filter checks work on create/update/destroy actions", %{user: user} do
-    user2 = Api.create!(Ash.Changeset.new(User))
-
-    assert_raise Ash.Error.Forbidden, fn ->
-      Api.update!(Ash.Changeset.new(user), actor: user2)
-    end
   end
 
   test "unauthorized if no policy is defined", %{user: user} do

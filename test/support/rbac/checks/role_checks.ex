@@ -1,4 +1,4 @@
-defmodule AshPolicyAuthorizer.Test.Checks.RoleChecks do
+defmodule AshPolicyAuthorizer.Test.Rbac.Checks.RoleChecks do
   @moduledoc false
   require Ash.Query
 

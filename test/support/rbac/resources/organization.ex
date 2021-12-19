@@ -1,4 +1,4 @@
-defmodule AshPolicyAuthorizer.Test.Organization do
+defmodule AshPolicyAuthorizer.Test.Rbac.Organization do
   @moduledoc false
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets
@@ -19,7 +19,7 @@ defmodule AshPolicyAuthorizer.Test.Organization do
   end
 
   relationships do
-    has_many :memberships, AshPolicyAuthorizer.Test.Membership do
+    has_many :memberships, AshPolicyAuthorizer.Test.Rbac.Membership do
       destination_field(:organization_id)
     end
   end

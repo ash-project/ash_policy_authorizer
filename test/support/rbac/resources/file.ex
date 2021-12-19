@@ -1,10 +1,10 @@
-defmodule AshPolicyAuthorizer.Test.File do
+defmodule AshPolicyAuthorizer.Test.Rbac.File do
   @moduledoc false
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [AshPolicyAuthorizer.Authorizer]
 
-  import AshPolicyAuthorizer.Test.Checks.RoleChecks, only: [can?: 1]
+  import AshPolicyAuthorizer.Test.Rbac.Checks.RoleChecks, only: [can?: 1]
 
   policies do
     policy always() do
@@ -29,6 +29,6 @@ defmodule AshPolicyAuthorizer.Test.File do
   end
 
   relationships do
-    belongs_to(:organization, AshPolicyAuthorizer.Test.Organization)
+    belongs_to(:organization, AshPolicyAuthorizer.Test.Rbac.Organization)
   end
 end

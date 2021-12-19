@@ -1,4 +1,4 @@
-defmodule AshPolicyAuthorizer.Test.User do
+defmodule AshPolicyAuthorizer.Test.Simple.User do
   @moduledoc false
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets,
@@ -28,6 +28,7 @@ defmodule AshPolicyAuthorizer.Test.User do
   end
 
   relationships do
-    has_many(:memberships, AshPolicyAuthorizer.Test.Membership, destination_field: :user_id)
+    belongs_to(:organization, AshPolicyAuthorizer.Test.Simple.Organization)
+    has_many(:posts, AshPolicyAuthorizer.Test.Simple.Post, destination_field: :author_id)
   end
 end
