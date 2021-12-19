@@ -8,7 +8,7 @@ defmodule AshPolicyAuthorizer.Test.User do
 
   policies do
     policy action_type(:update) do
-      authorize_if attribute(:id, eq: actor(:id))
+      authorize_if expr(id == ^actor(:id))
     end
   end
 

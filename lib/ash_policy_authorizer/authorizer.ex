@@ -238,7 +238,8 @@ defmodule AshPolicyAuthorizer.Authorizer do
       @bypass
     ],
     imports: [
-      AshPolicyAuthorizer.Check.BuiltInChecks
+      AshPolicyAuthorizer.Check.BuiltInChecks,
+      Ash.Filter.TemplateHelpers
     ],
     schema: [
       default_access_type: [
@@ -305,16 +306,12 @@ defmodule AshPolicyAuthorizer.Authorizer do
   end
 
   def validate_check(other) do
-    {:error, "#{inspect(other)} is not a valid check"}
+    {:ok, {AshPolicyAuthorizer.Check.Expression, expr: other}}
   end
 
   def validate_condition(conditions) when is_list(conditions) do
     Enum.reduce_while(conditions, {:ok, []}, fn condition, {:ok, conditions} ->
-      {condition, opts} =
-        case condition do
-          {condition, opts} -> {condition, opts}
-          condition -> {condition, []}
-        end
+      {:ok, {condition, opts}} = validate_check(condition)
 
       if Ash.Helpers.implements_behaviour?(condition, AshPolicyAuthorizer.Check) do
         {:cont, {:ok, [{condition, opts} | conditions]}}

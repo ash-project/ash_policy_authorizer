@@ -87,7 +87,4 @@ defmodule AshPolicyAuthorizer.Check.BuiltInChecks do
   def changing_relationships(relationships) do
     {AshPolicyAuthorizer.Check.ChangingRelationships, relationships: relationships}
   end
-
-  @doc "A helper to build filter templates. Use `actor(:field)` to refer to a field on the actor"
-  def actor(field), do: {:_actor, field}
 end
