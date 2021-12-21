@@ -12,7 +12,7 @@ by adding `ash_policy_authorizer` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:ash_policy_authorizer, "~> 0.16.3"}
+    {:ash_policy_authorizer, "~> 0.16.3-rc.0"}
   ]
 end
 ```

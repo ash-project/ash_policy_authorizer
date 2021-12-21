@@ -2,7 +2,7 @@ defmodule AshPolicyAuthorizer.MixProject do
   @moduledoc false
   use Mix.Project
 
-  @version "0.16.3"
+  @version "0.16.3-rc.0"
 
   @description """
   A policy based authorizer for the Ash Framework
