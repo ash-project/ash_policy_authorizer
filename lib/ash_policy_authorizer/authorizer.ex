@@ -296,6 +296,31 @@ defmodule AshPolicyAuthorizer.Authorizer do
 
   @behaviour Ash.Authorizer
 
+  @impl true
+
+  def exception({:changeset_doesnt_match_filter, filter}, state) do
+    if Map.get(state, :scenarios) && Map.get(state, :facts) do
+      AshPolicyAuthorizer.Forbidden.exception(
+        scenarios: Map.get(state, :scenarios),
+        facts: Map.get(state, :facts),
+        filter: filter
+      )
+    else
+      AshPolicyAuthorizer.Forbidden.exception(filter: filter)
+    end
+  end
+
+  def exception(_, state) do
+    if Map.get(state, :scenarios) && Map.get(state, :facts) do
+      AshPolicyAuthorizer.Forbidden.exception(
+        scenarios: Map.get(state, :scenarios),
+        facts: Map.get(state, :facts)
+      )
+    else
+      Ash.Error.Forbidden.exception([])
+    end
+  end
+
   @doc false
   def validate_check({module, opts}) when is_atom(module) and is_list(opts) do
     {:ok, {module, opts}}
