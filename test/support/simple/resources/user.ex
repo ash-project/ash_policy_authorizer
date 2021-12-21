@@ -10,6 +10,10 @@ defmodule AshPolicyAuthorizer.Test.Simple.User do
     policy action_type(:update) do
       authorize_if expr(id == ^actor(:id))
     end
+
+    policy action_type(:read) do
+      authorize_if always()
+    end
   end
 
   ets do
