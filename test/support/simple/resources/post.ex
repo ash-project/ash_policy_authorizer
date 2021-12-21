@@ -8,8 +8,15 @@ defmodule AshPolicyAuthorizer.Test.Simple.Post do
 
   policies do
     policy action_type(:read) do
+      description "You can read a post if you created it or if you own the organization"
       authorize_if expr(author_id == ^actor(:id))
       authorize_if expr(organization.owner_id == ^actor(:id))
+    end
+
+    policy action_type(:create) do
+      description "Admins and managers can create posts"
+      authorize_if actor_attribute_equals(:admin, true)
+      authorize_if actor_attribute_equals(:manager, true)
     end
   end
 

@@ -297,28 +297,31 @@ defmodule AshPolicyAuthorizer.Authorizer do
   @behaviour Ash.Authorizer
 
   @impl true
-
   def exception({:changeset_doesnt_match_filter, filter}, state) do
-    if Map.get(state, :scenarios) && Map.get(state, :facts) do
-      AshPolicyAuthorizer.Forbidden.exception(
-        scenarios: Map.get(state, :scenarios),
-        facts: Map.get(state, :facts),
-        filter: filter
-      )
-    else
-      AshPolicyAuthorizer.Forbidden.exception(filter: filter)
-    end
+    AshPolicyAuthorizer.Forbidden.exception(
+      scenarios: Map.get(state, :scenarios),
+      facts: Map.get(state, :facts),
+      policies: Map.get(state, :policies),
+      filter: filter
+    )
+  end
+
+  def exception(:must_pass_strict_check, state) do
+    AshPolicyAuthorizer.Forbidden.exception(
+      scenarios: Map.get(state, :scenarios),
+      facts: Map.get(state, :facts),
+      policies: Map.get(state, :policies),
+      must_pass_strict_check?: true
+    )
   end
 
   def exception(_, state) do
-    if Map.get(state, :scenarios) && Map.get(state, :facts) do
-      AshPolicyAuthorizer.Forbidden.exception(
-        scenarios: Map.get(state, :scenarios),
-        facts: Map.get(state, :facts)
-      )
-    else
-      Ash.Error.Forbidden.exception([])
-    end
+    AshPolicyAuthorizer.Forbidden.exception(
+      scenarios: Map.get(state, :scenarios),
+      facts: Map.get(state, :facts),
+      policies: Map.get(state, :policies),
+      must_pass_strict_check?: true
+    )
   end
 
   @doc false
@@ -422,11 +425,11 @@ defmodule AshPolicyAuthorizer.Authorizer do
         case filter do
           [filter] ->
             log(authorizer, "filtering with: #{inspect(filter)}, authorization complete")
-            {:filter, filter}
+            {:filter, authorizer, filter}
 
           filters ->
             log(authorizer, "filtering with: #{inspect(or: filter)}, authorization complete")
-            {:filter, [or: filters]}
+            {:filter, authorizer, [or: filters]}
         end
 
       {_filters, _require_check} ->
@@ -666,8 +669,8 @@ defmodule AshPolicyAuthorizer.Authorizer do
       {:error, :unsatisfiable} ->
         {:error,
          AshPolicyAuthorizer.Forbidden.exception(
-           verbose?: authorizer.verbose?,
            facts: authorizer.facts,
+           policies: authorizer.policies,
            scenarios: []
          )}
     end

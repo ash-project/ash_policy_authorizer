@@ -61,7 +61,27 @@ defmodule AshPolicyAuthorizer.Policy do
   end
 
   def fetch_fact(facts, {mod, opts}) do
-    Map.fetch(facts, {mod, Keyword.delete(opts, :access_type)})
+    # TODO: this is slow, and we should figure out a better way to access facts indiscriminate of access type,
+    # which my necessity must be stored with the fact (as facts create scenarios)
+    # Eventually we may just want to track two separate maps of facts, one with access type and one without
+    Enum.find_value(facts, fn
+      {{fact_mod, fact_opts}, result} ->
+        if mod == fact_mod &&
+             Keyword.delete(fact_opts, :access_type) ==
+               Keyword.delete(opts, :access_type) do
+          {:ok, result}
+        end
+
+      _ ->
+        nil
+    end)
+    |> case do
+      nil ->
+        :error
+
+      value ->
+        value
+    end
   end
 
   defp condition_expression(condition, facts) do

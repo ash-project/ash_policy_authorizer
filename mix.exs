@@ -58,7 +58,7 @@ defmodule AshPolicyAuthorizer.MixProject do
     [
       {:git_ops, "~> 2.4.4", only: :dev},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
-      {:ash, ash_version("~> 1.50 and >= 1.50.13")},
+      {:ash, ash_version("~> 1.50 and >= 1.50.14")},
       {:ex_check, "~> 0.12.0", only: :dev},
       {:credo, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
@@ -75,7 +75,8 @@ defmodule AshPolicyAuthorizer.MixProject do
       logo: "logos/small-logo.png",
       extra_section: "GUIDES",
       extras: [
-        "documentation/writing_policies.md"
+        "documentation/writing_policies.md",
+        "documentation/policy_breakdowns.md"
       ],
       groups_for_modules: [
         "policy dsl": ~r/AshPolicyAuthorizer.Authorizer/,

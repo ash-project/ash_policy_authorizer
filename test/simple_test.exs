@@ -3,7 +3,7 @@ defmodule AshPolicyAuthorizer.Test.SimpleTest do
   use ExUnit.Case
   doctest AshPolicyAuthorizer
 
-  alias AshPolicyAuthorizer.Test.Simple.{Api, Trip, Post, User}
+  alias AshPolicyAuthorizer.Test.Simple.{Api, Post, Trip, User}
 
   setup do
     [
@@ -16,6 +16,14 @@ defmodule AshPolicyAuthorizer.Test.SimpleTest do
 
     assert_raise Ash.Error.Forbidden, fn ->
       Api.update!(Ash.Changeset.new(user), actor: user2)
+    end
+  end
+
+  test "non-filter checks work on create/update/destroy actions" do
+    user = Api.create!(Ash.Changeset.new(User))
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Api.create!(Ash.Changeset.new(Post, %{text: "foo"}), actor: user)
     end
   end
 

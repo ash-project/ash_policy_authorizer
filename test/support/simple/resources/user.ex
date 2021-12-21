@@ -22,6 +22,8 @@ defmodule AshPolicyAuthorizer.Test.Simple.User do
 
   attributes do
     uuid_primary_key(:id)
+    attribute(:admin, :boolean)
+    attribute(:manager, :boolean)
   end
 
   actions do

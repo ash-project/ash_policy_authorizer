@@ -8,6 +8,16 @@ defmodule AshPolicyAuthorizer do
 
   alias Ash.Dsl.Extension
 
+  @doc "Whether or not ash policy authorizer is configured to show policy breakdowns in error messages"
+  def show_policy_breakdowns? do
+    Application.get_env(:ash_policy_authorizer, :show_policy_breakdowns?) || false
+  end
+
+  @doc "Whether or not ash policy authorizer is configured to show policy breakdowns in error messages"
+  def log_policy_breakdowns do
+    Application.get_env(:ash_policy_authorizer, :log_policy_breakdowns)
+  end
+
   @doc """
   A utility to determine if a given query/changeset would pass authorization.
 
@@ -35,7 +45,7 @@ defmodule AshPolicyAuthorizer do
       :authorized ->
         true
 
-      {:filter, _} ->
+      {:filter, _, _} ->
         true
 
       _ ->
@@ -61,7 +71,7 @@ defmodule AshPolicyAuthorizer do
       :authorized ->
         true
 
-      {:filter, _} ->
+      {:filter, _, _} ->
         :maybe
 
       _ ->
