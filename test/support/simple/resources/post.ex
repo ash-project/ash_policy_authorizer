@@ -9,7 +9,7 @@ defmodule AshPolicyAuthorizer.Test.Simple.Post do
   policies do
     policy action_type(:read) do
       description "You can read a post if you created it or if you own the organization"
-      authorize_if expr(author_id == ^actor(:id))
+      authorize_if expr(author.id == ^actor(:id))
       authorize_if expr(organization.owner_id == ^actor(:id))
     end
 
@@ -33,7 +33,14 @@ defmodule AshPolicyAuthorizer.Test.Simple.Post do
   end
 
   actions do
-    create(:create)
+    create :create do
+      argument(:author, :uuid)
+      change(manage_relationship(:author, type: :replace))
+
+      argument(:organization, :uuid)
+      change(manage_relationship(:organization, type: :replace))
+    end
+
     read(:read)
     update(:update)
     destroy(:destroy)

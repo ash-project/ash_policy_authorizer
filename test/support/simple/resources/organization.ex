@@ -8,7 +8,11 @@ defmodule AshPolicyAuthorizer.Test.Simple.Organization do
   end
 
   actions do
-    create(:create)
+    create(:create) do
+      argument(:owner, :uuid)
+      change(manage_relationship(:owner, type: :replace))
+    end
+
     read(:read)
     update(:update)
     destroy(:destroy)

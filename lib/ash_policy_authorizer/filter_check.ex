@@ -40,45 +40,7 @@ defmodule AshPolicyAuthorizer.FilterCheck do
       def type, do: :filter
 
       def strict_check_context(opts) do
-        [:query, :changeset]
-      end
-
-      def strict_check(
-            actor,
-            %{query: %{filter: candidate}, resource: resource, api: api} = context,
-            opts
-          ) do
-        opts = Keyword.put_new(opts, :resource, context.resource)
-        configured_filter = filter(opts)
-
-        if is_nil(actor) and
-             Ash.Filter.template_references_actor?(configured_filter) do
-          {:ok, false}
-        else
-          filter = Ash.Filter.build_filter_from_template(configured_filter, actor)
-
-          case Ash.Filter.parse(resource, filter) do
-            {:ok, parsed_filter} ->
-              if Ash.Filter.strict_subset_of?(parsed_filter, candidate) do
-                {:ok, true}
-              else
-                case Ash.Filter.parse(resource, not: filter) do
-                  {:ok, negated_filter} ->
-                    if Ash.Filter.strict_subset_of?(negated_filter, candidate) do
-                      {:ok, false}
-                    else
-                      {:ok, :unknown}
-                    end
-
-                  {:error, error} ->
-                    {:error, error}
-                end
-              end
-
-            {:error, error} ->
-              {:error, error}
-          end
-        end
+        []
       end
 
       def strict_check(_, _, _), do: {:ok, :unknown}

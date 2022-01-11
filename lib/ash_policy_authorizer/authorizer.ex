@@ -476,8 +476,14 @@ defmodule AshPolicyAuthorizer.Authorizer do
           check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
       end)
       |> case do
-        [] -> or_filters
-        filter -> [[and: filter] | or_filters]
+        [] ->
+          or_filters
+
+        [single] ->
+          [single | or_filters]
+
+        filters ->
+          [[and: filters] | or_filters]
       end
     end)
   end
