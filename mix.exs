@@ -58,7 +58,7 @@ defmodule AshPolicyAuthorizer.MixProject do
     [
       {:git_ops, "~> 2.4.4", only: :dev},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
-      {:ash, ash_version("~> 1.50 and >= 1.50.14")},
+      {:ash, ash_version("~> 1.51")},
       {:ex_check, "~> 0.12.0", only: :dev},
       {:credo, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},

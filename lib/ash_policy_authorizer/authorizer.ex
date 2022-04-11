@@ -302,6 +302,8 @@ defmodule AshPolicyAuthorizer.Authorizer do
       scenarios: Map.get(state, :scenarios),
       facts: Map.get(state, :facts),
       policies: Map.get(state, :policies),
+      resource: Map.get(state, :resource),
+      action: Map.get(state, :action),
       filter: filter
     )
   end
@@ -311,6 +313,8 @@ defmodule AshPolicyAuthorizer.Authorizer do
       scenarios: Map.get(state, :scenarios),
       facts: Map.get(state, :facts),
       policies: Map.get(state, :policies),
+      resource: Map.get(state, :resource),
+      action: Map.get(state, :action),
       must_pass_strict_check?: true
     )
   end
@@ -320,6 +324,8 @@ defmodule AshPolicyAuthorizer.Authorizer do
       scenarios: Map.get(state, :scenarios),
       facts: Map.get(state, :facts),
       policies: Map.get(state, :policies),
+      resource: Map.get(state, :resource),
+      action: Map.get(state, :action),
       must_pass_strict_check?: true
     )
   end
@@ -403,14 +409,12 @@ defmodule AshPolicyAuthorizer.Authorizer do
       authorizer.scenarios
       |> Enum.split_with(fn scenario ->
         scenario
-        |> Enum.reject(fn {{_check_module, opts}, _} ->
-          opts[:access_type] == :filter
-        end)
         |> Enum.reject(fn {{check_module, opts}, _} ->
-          match?(
-            {:ok, _},
-            AshPolicyAuthorizer.Policy.fetch_fact(authorizer.facts, {check_module, opts})
-          ) || check_module.type() == :filter
+          opts[:access_type] == :filter ||
+            match?(
+              {:ok, _},
+              AshPolicyAuthorizer.Policy.fetch_fact(authorizer.facts, {check_module, opts})
+            ) || check_module.type() == :filter
         end)
         |> Enum.empty?()
       end)

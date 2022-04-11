@@ -13,7 +13,9 @@ defmodule AshPolicyAuthorizer.Forbidden do
       filter: nil,
       policy_breakdown?: false,
       must_pass_strict_check?: false,
-      policies: []
+      policies: [],
+      resource: nil,
+      action: nil
     ],
     class: :forbidden
   )
@@ -61,61 +63,80 @@ defmodule AshPolicyAuthorizer.Forbidden do
         "No policy errors"
 
       errors ->
-        errors
-        |> Enum.map(fn
-          %{
-            facts: facts,
-            filter: filter,
-            policies: policies,
-            must_pass_strict_check?: must_pass_strict_check?
-          } ->
-            must_pass_strict_check? =
-              if must_pass_strict_check? do
-                """
-                Scenario must pass strict check only, meaning `runtime` policies cannot be checked.
+        error_lines =
+          errors
+          |> Enum.map(fn
+            %{
+              facts: facts,
+              filter: filter,
+              policies: policies,
+              must_pass_strict_check?: must_pass_strict_check?
+            } ->
+              must_pass_strict_check? =
+                if must_pass_strict_check? do
+                  """
+                  Scenario must pass strict check only, meaning `runtime` policies cannot be checked.
 
-                This requirement is generally used for filtering on related resources, when we can't fetch those
-                related resources to run `runtime` policies. For this reason, you generally want your primary read
-                actions on your resources to have standard policies which can be checked statically (like `actor_attribute_equals`)
-                in addition to filter policies, like `expr(foo == :bar)`.
-                """
-              else
-                ""
-              end
+                  This requirement is generally used for filtering on related resources, when we can't fetch those
+                  related resources to run `runtime` policies. For this reason, you generally want your primary read
+                  actions on your resources to have standard policies which can be checked statically (like `actor_attribute_equals`)
+                  in addition to filter policies, like `expr(foo == :bar)`.
+                  """
+                else
+                  ""
+                end
 
-            policy_breakdown_title =
-              if Keyword.get(opts, :help_text?, true) do
-                ["Policy Breakdown", @help_text]
-              else
-                "Policy Breakdown"
-              end
+              policy_breakdown_title =
+                if Keyword.get(opts, :help_text?, true) do
+                  ["Policy Breakdown", @help_text]
+                else
+                  "Policy Breakdown"
+                end
 
-            policy_explanation =
-              policies
-              |> Enum.filter(&relevant?(&1, facts))
-              |> Enum.map(&explain_policy(&1, facts))
-              |> Enum.intersperse("\n")
-              |> title(policy_breakdown_title, false)
+              policy_explanation =
+                policies
+                |> Enum.filter(&relevant?(&1, facts))
+                |> Enum.map(&explain_policy(&1, facts))
+                |> Enum.intersperse("\n")
+                |> title(policy_breakdown_title, false)
 
-            filter =
-              if filter do
-                title(
-                  "Did not match filter expression #{inspect(filter)}",
-                  "Generated Filter"
-                )
-              else
-                ""
-              end
+              filter =
+                if filter do
+                  title(
+                    "Did not match filter expression #{inspect(filter)}",
+                    "Generated Filter"
+                  )
+                else
+                  ""
+                end
 
-            [must_pass_strict_check?, filter, policy_explanation]
-            |> Enum.filter(& &1)
-            |> Enum.intersperse("\n\n")
-        end)
-        |> Enum.intersperse("\n\n")
+              [must_pass_strict_check?, filter, policy_explanation]
+              |> Enum.filter(& &1)
+              |> Enum.intersperse("\n\n")
+          end)
+          |> Enum.intersperse("\n\n")
+
+        [title_line(error), "\n", error_lines]
         |> IO.iodata_to_binary()
         |> String.trim()
     end
   end
+
+  defp title_line(error) do
+    cond do
+      error.resource && error.action ->
+        "#{inspect(error.resource)}.#{action_name(error.action)}"
+
+      error.resource ->
+        "#{inspect(error.resource)}"
+
+      error.action ->
+        "#{action_name(error.action)}"
+    end
+  end
+
+  defp action_name(%{name: name}), do: name
+  defp action_name(name), do: name
 
   defp relevant?(policy, facts) do
     Enum.all?(policy.condition, fn condition ->
@@ -248,7 +269,7 @@ defmodule AshPolicyAuthorizer.Forbidden do
 
     def message(error) do
       if error.policy_breakdown? do
-        "forbidden:\n#{AshPolicyAuthorizer.Forbidden.report(error, help_text?: false)}"
+        "forbidden:\n\n#{AshPolicyAuthorizer.Forbidden.report(error, help_text?: false)}"
       else
         "forbidden"
       end
