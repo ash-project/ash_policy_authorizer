@@ -41,6 +41,11 @@ defmodule AshPolicyAuthorizer.Check.BuiltInChecks do
     {AshPolicyAuthorizer.Check.ActorAttributeEquals, attribute: attribute, value: value}
   end
 
+  @doc "This check is true when the value of the specified attribute contains at least one of the specified value(s)"
+  def actor_attribute_has_any(attribute, value) do
+    {AshPolicyAuthorizer.Check.ActorAttributeHasAny, attribute: attribute, values: List.wrap(value)}
+  end
+
   @doc """
   This check is true when attribute changes correspond to the provided options.
 
